@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from gui_styles import StyleConfig, DashboardBase, StatCard, add_treeview_style, insert_tree_row
+import excel_export
 
 
 def _make_tree(parent, cols, widths):
@@ -62,11 +63,14 @@ class AdminDashboard(DashboardBase):
     def __init__(self, root, user_data, db, on_logout):
         super().__init__(root, user_data, db, on_logout)
         items = [
+            ('Tổng quan', '📊', 'DASH'),
+            ('Hồ sơ', '👤', 'PROF'),
             ('Sinh viên', '👥', 'SV'), ('Giảng viên', '👨‍🏫', 'GV'),
             ('Tài khoản', '🔑', 'USR'), ('Lớp HC', '🏢', 'LHC'),
             ('Khoa', '🏫', 'KH'), ('Môn học', '📚', 'MH'),
             ('Lớp HP', '📅', 'LHP'), ('Học kỳ', '⏱️', 'HK'),
-            ('Thông báo', '📢', 'TB'),
+            ('Thông báo', '📢', 'TB'), ('Nhật ký', '📜', 'NK'),
+            ('Bảng vàng', '🏆', 'BV'),
         ]
         first = None
         for t, i, c in items:
@@ -76,75 +80,149 @@ class AdminDashboard(DashboardBase):
 
     def show_page(self, code):
         self.header_title.config(text={
+            'DASH': '📊  Tổng quan hệ thống', 'PROF': '👤  Hồ sơ cá nhân',
             'SV': '👥  Quản lý Sinh viên', 'GV': '👨‍🏫  Quản lý Giảng viên',
             'USR': '🔑  Quản lý Tài khoản', 'LHC': '🏢  Lớp Hành chính',
             'KH': '🏫  Quản lý Khoa', 'MH': '📚  Quản lý Môn học',
             'LHP': '📅  Lớp Học phần', 'HK': '⏱️  Học kỳ', 'TB': '📢  Thông báo',
+            'NK': '📜  Nhật ký hệ thống', 'BV': '🏆  Bảng vàng sinh viên'
         }.get(code, code))
         for w in self.content_area.winfo_children(): w.destroy()
-        {'SV': self.page_sv, 'GV': self.page_gv, 'USR': self.page_users,
+        {'DASH': self.page_dashboard, 'PROF': self.page_profile,
+         'SV': self.page_sv, 'GV': self.page_gv, 'USR': self.page_users,
          'LHC': self.page_lhc, 'KH': self.page_kh, 'MH': self.page_mh,
-         'LHP': self.page_lhp, 'HK': self.page_hk, 'TB': self.page_tb}.get(code, lambda: None)()
+         'LHP': self.page_lhp, 'HK': self.page_hk, 'TB': self.page_tb,
+         'NK': self.page_nk, 'BV': self.page_bv}.get(code, lambda: None)()
 
-    # ── SINH VIÊN ──────────────────────────────────────────────────────────
+    # ── DASHBOARD ─────────────────────────────────────────────────────────
+    def page_dashboard(self):
+        sf = tk.Frame(self.content_area, bg=StyleConfig.CONTENT_BG)
+        sf.pack(fill='x', pady=(0, 18))
+        
+        self.db.cursor.execute("SELECT COUNT(*) FROM sinh_vien")
+        sv_count = self.db.cursor.fetchone()[0]
+        self.db.cursor.execute("SELECT COUNT(*) FROM giang_vien")
+        gv_count = self.db.cursor.fetchone()[0]
+        self.db.cursor.execute("SELECT COUNT(*) FROM lop_hoc_phan")
+        lhp_count = self.db.cursor.fetchone()[0]
+        self.db.cursor.execute("SELECT COUNT(*) FROM hoc_ky")
+        hk_count = self.db.cursor.fetchone()[0]
+
+        StatCard(sf, "Tổng Sinh Viên", sv_count, "SV", StyleConfig.PRIMARY)
+        StatCard(sf, "Tổng Giảng Viên", gv_count, "GV", StyleConfig.INFO)
+        StatCard(sf, "Lớp Học Phần", lhp_count, "Lớp", StyleConfig.SUCCESS)
+        StatCard(sf, "Học Kỳ", hk_count, "HK", StyleConfig.WARNING)
+
+        card = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=20, pady=20)
+        card.pack(fill='both', expand=True)
+        tk.Label(card, text="Trạng thái hệ thống", font=StyleConfig.FONT_LG, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w', pady=(0,10))
+        tk.Label(card, text="Hệ thống Quản lý Điểm Đại học v5.0 đang hoạt động ổn định.\nChọn các chức năng ở menu bên trái để tiếp tục.", font=StyleConfig.FONT_MD, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY, justify='left').pack(anchor='w')
+
+    # ── SINH VIEN ─────────────────────────────────────────────────────────
     def page_sv(self):
-        cols = ('ID','MSV','Họ tên','Ngày sinh','GT','Lớp HC')
+        # Search toolbar
+        tb = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=16, pady=10)
+        tb.pack(fill='x', pady=(0, 8))
+        tk.Label(tb, text="Tim kiem:", font=StyleConfig.FONT_SM,
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
+        ent_search = ttk.Entry(tb, width=28)
+        ent_search.pack(side='left', padx=(6, 0))
+        ttk.Button(tb, text="Xuat Excel", style="Success.TButton",
+                   command=lambda: excel_export.export_danh_sach_sv(
+                       self.db.get_all_sinh_vien())).pack(side='right', padx=4)
+
+        cols = ('ID','MSV','Ho ten','Ngay sinh','GT','Lop HC')
         tree = _make_tree(_card(self.content_area, None), cols, [55,90,200,110,60,140])
+        self._sv_all = []
+
         def refresh():
-            for i in tree.get_children(): tree.delete(i)
-            for r in self.db.get_all_sinh_vien(): insert_tree_row(tree, r)
+            self._sv_all = self.db.get_all_sinh_vien()
             lhcs = self.db.get_all_lop_hc()
             self.lhc_map = {r[2]: r[0] for r in lhcs}
             ents[4]['values'] = list(self.lhc_map.keys())
+            _apply_filter()
+
+        def _apply_filter():
+            for i in tree.get_children(): tree.delete(i)
+            kw = ent_search.get().strip().lower()
+            filtered = [r for r in self._sv_all
+                        if not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()]
+            for r in filtered: insert_tree_row(tree, r)
+
+        ent_search.bind("<KeyRelease>", lambda e: _apply_filter())
+
         def add():
             if self.db.insert_sinh_vien(ents[0].get(), ents[1].get(), ents[2].get(),
                                         ents[3].get(), self.lhc_map.get(ents[4].get())):
-                messagebox.showinfo('OK', '✅ Đã thêm sinh viên (Pass: 123)'); refresh()
-            else: messagebox.showerror('Lỗi', 'Thêm thất bại (trùng mã)')
+                messagebox.showinfo('OK', 'Da them sinh vien (Pass: 123)'); refresh()
+            else: messagebox.showerror('Loi', 'Them that bai (trung ma)')
         def edit():
             sel = tree.selection()
             if sel:
                 if self.db.update_sinh_vien(tree.item(sel[0])['values'][0],
                         ents[0].get(), ents[1].get(), ents[2].get(),
                         ents[3].get(), self.lhc_map.get(ents[4].get())):
-                    messagebox.showinfo('OK', '✅ Cập nhật thành công'); refresh()
-                else: messagebox.showerror('Lỗi', 'Cập nhật thất bại')
+                    messagebox.showinfo('OK', 'Cap nhat thanh cong'); refresh()
+                else: messagebox.showerror('Loi', 'Cap nhat that bai')
         def delete():
             sel = tree.selection()
-            if sel and messagebox.askyesno('Xác nhận', 'Xóa sinh viên này?'):
+            if sel and messagebox.askyesno('Xac nhan', 'Xoa sinh vien nay?'):
                 ok, msg = self.db.delete_sinh_vien(tree.item(sel[0])['values'][0])
                 if ok: refresh()
-                else: messagebox.showwarning('Cảnh báo', msg)
+                else: messagebox.showwarning('Canh bao', msg)
         ents = _form_card(self.content_area,
-                          [('MSV',14,0),('Họ tên',22,0),('Ngày sinh',13,0),('GT',8,0),('Lớp HC',18,1)],
+                          [('MSV',14,0),('Ho ten',22,0),('Ngay sinh',13,0),('GT',8,0),('Lop HC',18,1)],
                           add, edit, delete, tree)
         refresh()
 
-    # ── GIẢNG VIÊN ─────────────────────────────────────────────────────────
+    # ── GIANG VIEN ─────────────────────────────────────────────────────────
     def page_gv(self):
-        cols = ('ID','Mã GV','Họ tên','Khoa','Email','SĐT')
+        # Search toolbar
+        tb = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=16, pady=10)
+        tb.pack(fill='x', pady=(0, 8))
+        tk.Label(tb, text="Tim kiem:", font=StyleConfig.FONT_SM,
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
+        ent_search = ttk.Entry(tb, width=28)
+        ent_search.pack(side='left', padx=(6, 0))
+        ttk.Button(tb, text="Xuat Excel", style="Success.TButton",
+                   command=lambda: excel_export.export_danh_sach_gv(
+                       self.db.get_all_giang_vien())).pack(side='right', padx=4)
+
+        cols = ('ID','Ma GV','Ho ten','Khoa','Email','SDT')
         tree = _make_tree(_card(self.content_area, None), cols, [55,90,200,150,170,110])
+        self._gv_all = []
+
         def refresh():
+            self._gv_all = self.db.get_all_giang_vien()
+            _apply_filter()
+
+        def _apply_filter():
             for i in tree.get_children(): tree.delete(i)
-            for r in self.db.get_all_giang_vien(): insert_tree_row(tree, r)
+            kw = ent_search.get().strip().lower()
+            filtered = [r for r in self._gv_all
+                        if not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower() or kw in str(r[3]).lower()]
+            for r in filtered: insert_tree_row(tree, r)
+
+        ent_search.bind("<KeyRelease>", lambda e: _apply_filter())
+
         def add():
             if self.db.insert_giang_vien(ents[0].get(), ents[1].get(), ents[2].get(), ents[3].get(), ents[4].get()):
-                messagebox.showinfo('OK', '✅ Đã thêm giảng viên (Pass: 123)'); refresh()
-            else: messagebox.showerror('Lỗi', 'Thêm thất bại')
+                messagebox.showinfo('OK', 'Da them giang vien (Pass: 123)'); refresh()
+            else: messagebox.showerror('Loi', 'Them that bai')
         def edit():
             sel = tree.selection()
             if sel:
                 if self.db.update_giang_vien(tree.item(sel[0])['values'][0],
                         ents[0].get(), ents[1].get(), ents[2].get(), ents[3].get(), ents[4].get()):
-                    messagebox.showinfo('OK', '✅ Cập nhật'); refresh()
+                    messagebox.showinfo('OK', 'Cap nhat thanh cong'); refresh()
         def delete():
             sel = tree.selection()
-            if sel and messagebox.askyesno('Xác nhận', 'Xóa giảng viên?'):
+            if sel and messagebox.askyesno('Xac nhan', 'Xoa giang vien?'):
                 ok, msg = self.db.delete_giang_vien(tree.item(sel[0])['values'][0])
                 if ok: refresh()
-                else: messagebox.showwarning('Cảnh báo', msg)
+                else: messagebox.showwarning('Canh bao', msg)
         ents = _form_card(self.content_area,
-                          [('Mã GV',12,0),('Họ tên',22,0),('Khoa',16,0),('Email',18,0),('SĐT',12,0)],
+                          [('Ma GV',12,0),('Ho ten',22,0),('Khoa',16,0),('Email',18,0),('SDT',12,0)],
                           add, edit, delete, tree)
         refresh()
 
@@ -346,7 +424,7 @@ class AdminDashboard(DashboardBase):
             ents[0].delete(0, tk.END); ents[0].insert(0, vals[1])
             lhp_id = vals[0]
             self.db.cursor.execute(
-                'SELECT id_mon_hoc,id_giang_vien,id_hoc_ky,thu,ca_hoc FROM lop_hoc_phan WHERE id=?', (lhp_id,))
+                'SELECT id_mon_hoc,id_giang_vien,id_hoc_ky,thu,ca_hoc FROM lop_hoc_phan WHERE id=%s', (lhp_id,))
             row = self.db.cursor.fetchone()
             if row:
                 for key, val in self.mh_map.items():
@@ -417,3 +495,26 @@ class AdminDashboard(DashboardBase):
                 self.db.delete_thong_bao(tree.item(sel[0])['values'][0]); refresh()
         ents = _form_card(self.content_area, [('Tiêu đề',46,0)], add, lambda: None, delete, tree)
         refresh()
+
+    # ── NHẬT KÝ ────────────────────────────────────────────────────────────
+    def page_nk(self):
+        cols = ('Người dùng','Hành động','Thời gian','Chi tiết')
+        tree = _make_tree(_card(self.content_area, None), cols, [120,150,180,350])
+        def refresh():
+            for i in tree.get_children(): tree.delete(i)
+            for r in self.db.get_nhat_ky(): insert_tree_row(tree, r)
+        refresh()
+
+    # ── BẢNG VÀNG ──────────────────────────────────────────────────────────
+    def page_bv(self):
+        # Stat cards for context
+        sf = tk.Frame(self.content_area, bg=StyleConfig.CONTENT_BG)
+        sf.pack(fill='x', pady=(0, 18))
+        StatCard(sf, "Học bổng loại A", "GPA >= 3.6", "🥇", StyleConfig.PRIMARY)
+        StatCard(sf, "Học bổng loại B", "GPA >= 3.2", "🥈", StyleConfig.SUCCESS)
+        
+        card = _card(self.content_area, "Top 20 sinh viên có GPA cao nhất hệ thống")
+        cols = ('MSV','Họ tên','GPA Tích lũy')
+        tree = _make_tree(card, cols, [120,250,150])
+        for r in self.db.get_top_sinh_vien(20):
+            insert_tree_row(tree, r)

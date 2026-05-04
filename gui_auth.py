@@ -17,7 +17,14 @@ class LoginWindow:
         self.root.state('normal')
         self.root.resizable(False, False)
         self.root.configure(bg="#16213e")
-        self.root.eval('tk::PlaceWindow . center')
+        
+        # Center window manually
+        self.root.update_idletasks()
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        x = int((sw - self.W) / 2)
+        y = int((sh - self.H) / 2)
+        self.root.geometry(f"{self.W}x{self.H}+{x}+{y}")
 
         self._build()
 
@@ -148,9 +155,14 @@ class LoginWindow:
         res = self.db.verify_login(self.ent_u.get().strip(),
                                    self.ent_p.get().strip())
         if res:
+            # Gọi on_success trước — cửa sổ có thể bị destroy bên trong
             self.on_success(res)
-        else:
-            messagebox.showerror("Đăng nhập thất bại",
-                                 "❌  Tên đăng nhập hoặc mật khẩu không đúng.\n"
-                                 "Tài khoản có thể đã bị khóa.")
-        self.btn.config(text="ĐĂNG NHẬP  →", state='normal')
+            # Không chạm vào self.btn nữa vì widget đã không còn tồn tại
+            return
+
+        # Chỉ restore nút khi đăng nhập thất bại (cửa sổ vẫn còn mở)
+        messagebox.showerror("Đăng nhập thất bại",
+                             "Tên đăng nhập hoặc mật khẩu không đúng.\n"
+                             "Tài khoản có thể đã bị khóa.")
+        if self.btn.winfo_exists():
+            self.btn.config(text="ĐĂNG NHẬP  \u2192", state='normal')

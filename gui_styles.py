@@ -268,8 +268,12 @@ class DashboardBase:
                  bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_LIGHT).pack(side='right', padx=16)
 
     def _tick(self):
-        self._clock.config(text=f"🕐  {datetime.now().strftime('%d/%m/%Y   %H:%M:%S')}")
-        self.root.after(1000, self._tick)
+        try:
+            if self._clock.winfo_exists():
+                self._clock.config(text=f"   {datetime.now().strftime('%d/%m/%Y   %H:%M:%S')}")
+                self.root.after(1000, self._tick)
+        except Exception:
+            pass  # Widget bi destroy, dung timer
 
     def set_status(self, text, ok=True):
         color = StyleConfig.SUCCESS if ok else StyleConfig.DANGER
@@ -339,3 +343,70 @@ class DashboardBase:
                 inner.config(bg=StyleConfig.SIDEBAR_BG)
                 ico.config(bg=StyleConfig.SIDEBAR_BG, fg=StyleConfig.SIDEBAR_TEXT)
                 txt.config(bg=StyleConfig.SIDEBAR_BG, fg=StyleConfig.SIDEBAR_TEXT)
+
+    # ── Common Profile / Password Page ──────────────────────────────────────
+    def page_profile(self):
+        self.header_title.config(text="👤  Hồ sơ cá nhân")
+        for w in self.content_area.winfo_children(): w.destroy()
+
+        card = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=30, pady=24)
+        card.pack(fill='both', expand=True)
+
+        tk.Label(card, text="Thông tin tài khoản", font=StyleConfig.FONT_LG,
+                 bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w', pady=(0, 20))
+
+        # Basic Info
+        info_frame = tk.Frame(card, bg=StyleConfig.CARD_BG)
+        info_frame.pack(fill='x', pady=(0, 30))
+        
+        lbl_style = {"font": StyleConfig.FONT_SM, "bg": StyleConfig.CARD_BG, "fg": StyleConfig.TEXT_GRAY, "width": 15, "anchor": "w"}
+        val_style = {"font": StyleConfig.FONT_MD, "bg": StyleConfig.CARD_BG, "fg": StyleConfig.TEXT_DARK}
+
+        tk.Label(info_frame, text="Username:", **lbl_style).grid(row=0, column=0, pady=6)
+        tk.Label(info_frame, text=self.user_data[1], **val_style).grid(row=0, column=1, pady=6, sticky='w')
+
+        tk.Label(info_frame, text="Vai trò:", **lbl_style).grid(row=1, column=0, pady=6)
+        tk.Label(info_frame, text=self.user_data[2].upper(), **val_style).grid(row=1, column=1, pady=6, sticky='w')
+
+        # Password Change Form
+        tk.Label(card, text="Đổi mật khẩu", font=StyleConfig.FONT_LG,
+                 bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w', pady=(0, 16))
+
+        pw_frame = tk.Frame(card, bg=StyleConfig.CARD_BG)
+        pw_frame.pack(fill='x')
+
+        tk.Label(pw_frame, text="Mật khẩu cũ:", **lbl_style).grid(row=0, column=0, pady=8)
+        ent_old = ttk.Entry(pw_frame, width=30, show="*")
+        ent_old.grid(row=0, column=1, pady=8)
+
+        tk.Label(pw_frame, text="Mật khẩu mới:", **lbl_style).grid(row=1, column=0, pady=8)
+        ent_new = ttk.Entry(pw_frame, width=30, show="*")
+        ent_new.grid(row=1, column=1, pady=8)
+
+        tk.Label(pw_frame, text="Xác nhận lại:", **lbl_style).grid(row=2, column=0, pady=8)
+        ent_confirm = ttk.Entry(pw_frame, width=30, show="*")
+        ent_confirm.grid(row=2, column=1, pady=8)
+
+        def do_change():
+            old_pw = ent_old.get()
+            new_pw = ent_new.get()
+            conf_pw = ent_confirm.get()
+            if not old_pw or not new_pw or not conf_pw:
+                from tkinter import messagebox
+                messagebox.showwarning("Thiếu", "Vui lòng nhập đủ thông tin!")
+                return
+            if new_pw != conf_pw:
+                from tkinter import messagebox
+                messagebox.showerror("Lỗi", "Mật khẩu xác nhận không khớp!")
+                return
+            
+            ok, msg = self.db.change_password(self.user_data[0], old_pw, new_pw)
+            from tkinter import messagebox
+            if ok:
+                messagebox.showinfo("Thành công", msg)
+                ent_old.delete(0, 'end'); ent_new.delete(0, 'end'); ent_confirm.delete(0, 'end')
+            else:
+                messagebox.showerror("Lỗi", msg)
+
+        ttk.Button(pw_frame, text="Lưu mật khẩu mới", style="Primary.TButton",
+                   command=do_change).grid(row=3, column=1, pady=16, sticky='w')

@@ -47,10 +47,11 @@ class LopHocPhan:
         self.id_hoc_ky = id_hoc_ky
 
 class Diem:
-    def __init__(self, id_sinh_vien, id_lop_hp, diem_cc, diem_gk, diem_ck, diem_tb):
+    def __init__(self, id_sinh_vien, id_lop_hp, diem_cc, diem_gk, diem_ck, diem_tb, trang_thai='Đang học'):
         self.id_sinh_vien = id_sinh_vien
         self.id_lop_hp = id_lop_hp
         self.diem_cc = diem_cc
         self.diem_gk = diem_gk
         self.diem_ck = diem_ck
         self.diem_tb = diem_tb
+        self.trang_thai = trang_thai
