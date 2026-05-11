@@ -72,7 +72,7 @@ def _write_data_row(ws, values, row, alt=False):
 def _footer(ws, row, ncols):
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=ncols)
     c = ws.cell(row=row, column=1,
-                value=f"Xuat ngay: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}   |   Phan mem Quan ly Diem DH v5.0")
+                value=f"Xuat ngay: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}   |   Phan mem Quan ly Diem DH")
     c.font = Font(name='Calibri', italic=True, size=9, color='94A3B8')
     c.alignment = _center()
     ws.row_dimensions[row].height = 16

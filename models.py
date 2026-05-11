@@ -55,3 +55,15 @@ class Diem:
         self.diem_ck = diem_ck
         self.diem_tb = diem_tb
         self.trang_thai = trang_thai
+class DiemDanh:
+    def __init__(self, id_sinh_vien, id_lop_hp, ngay, trang_thai):
+        self.id_sinh_vien = id_sinh_vien
+        self.id_lop_hp = id_lop_hp
+        self.ngay = ngay
+        self.trang_thai = trang_thai # 1: Có mặt, 0: Vắng, 2: Có phép
+
+class DangKyLop:
+    def __init__(self, id_sinh_vien, id_lop_hp, ngay_dang_ky):
+        self.id_sinh_vien = id_sinh_vien
+        self.id_lop_hp = id_lop_hp
+        self.ngay_dang_ky = ngay_dang_ky

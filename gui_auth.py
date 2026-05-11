@@ -12,7 +12,7 @@ class LoginWindow:
         self.on_success = on_success
         self.db         = db if db is not None else Database()
 
-        self.root.title("Phần mềm Quản lý điểm hệ Đại học  v5.0")
+        self.root.title("Phần mềm Quản lý điểm hệ Đại học")
         self.root.geometry(f"{self.W}x{self.H}")
         self.root.state('normal')
         self.root.resizable(False, False)
@@ -55,9 +55,7 @@ class LoginWindow:
         canvas.create_text(left_w//2, self.H//2 + 44,
                            text="Phần mềm Quản lý điểm hệ Đại học",
                            font=("Segoe UI", 12), fill="#dde8ff")
-        canvas.create_text(left_w//2, self.H//2 + 72,
-                           text="Phiên bản 5.0  •  Hiện đại  •  Bảo mật",
-                           font=("Segoe UI", 9), fill="#b8c8ee")
+        
 
         # Feature bullets
         features = [("🔐", "Xác thực bảo mật SHA-256"),
@@ -83,7 +81,7 @@ class LoginWindow:
         tk.Label(card, text="Chào mừng trở lại!",
                  font=("Segoe UI", 20, "bold"),
                  fg=StyleConfig.TEXT_DARK, bg=StyleConfig.CARD_BG).pack(anchor='w')
-        tk.Label(card, text="Đăng nhập để tiếp tục",
+        tk.Label(card, text="Đăng nhập vào tài khoản",
                  font=StyleConfig.FONT_SM, fg=StyleConfig.TEXT_GRAY,
                  bg=StyleConfig.CARD_BG).pack(anchor='w', pady=(2, 28))
 

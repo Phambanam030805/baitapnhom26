@@ -65,7 +65,7 @@ class StyleConfig:
 
         # ── Treeview ───────────────────────────────────────────────────────
         style.configure("Treeview",
-            font=StyleConfig.FONT_MD, rowheight=36,
+            font=StyleConfig.FONT_MD, rowheight=34,
             fieldbackground=StyleConfig.CARD_BG,
             background=StyleConfig.CARD_BG,
             foreground=StyleConfig.TEXT_DARK,
@@ -102,9 +102,9 @@ class StyleConfig:
         style.configure("TCombobox", padding=[8, 6], relief='flat')
         style.configure("TSeparator", background=StyleConfig.BORDER)
         style.configure("TScrollbar",
-            background=StyleConfig.BORDER,
+            background="#cbd5e1", # Modern slate-300
             troughcolor=StyleConfig.CONTENT_BG,
-            borderwidth=0, relief='flat', arrowsize=12)
+            borderwidth=0, relief='flat', arrowsize=10)
         return style
 
 
@@ -148,6 +148,232 @@ class StatCard:
 
     def update(self, value):
         self.val_lbl.config(text=str(value))
+
+
+class ScrollableFrame(tk.Frame):
+    """Một Frame có khả năng cuộn nội dung bên trong, tự động ẩn thanh cuộn khi không cần."""
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        self.canvas = tk.Canvas(self, bg=kwargs.get('bg', StyleConfig.CONTENT_BG), highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas, bg=kwargs.get('bg', StyleConfig.CONTENT_BG))
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self._update_scroll_region()
+        )
+
+        self._frame_id = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # Stretch scrollable_frame to fill canvas width
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        
+        # Binding MouseWheel cho cả canvas và các widget con
+        self._bind_mousewheel(self.canvas)
+        self.scrollable_frame.bind("<Enter>", lambda e: self._bind_mousewheel(self.canvas))
+
+    def _bind_mousewheel(self, widget):
+        widget.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _update_scroll_region(self):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._check_scrollbar()
+
+    def _on_canvas_configure(self, event):
+        self.canvas.itemconfig(self._frame_id, width=event.width)
+        self._check_scrollbar()
+
+    def _check_scrollbar(self):
+        """Ẩn thanh cuộn nếu nội dung vừa khít màn hình."""
+        self.update_idletasks()
+        content_h = self.scrollable_frame.winfo_reqheight()
+        canvas_h = self.canvas.winfo_height()
+        
+        if content_h <= canvas_h or canvas_h <= 1:
+            if self.scrollbar.winfo_ismapped():
+                self.scrollbar.pack_forget()
+        else:
+            if not self.scrollbar.winfo_ismapped():
+                self.scrollbar.pack(side="right", fill="y")
+
+    def _on_mousewheel(self, event):
+        if self.scrollbar.winfo_ismapped():
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+
+class ModernChart:
+    """Vẽ biểu đồ hiện đại trực tiếp trên Canvas với hiệu ứng chuyển động."""
+
+    # Bảng màu phân biệt cho từng cột
+    BAR_COLORS = [
+        "#4f46e5", "#06b6d4", "#10b981", "#f59e0b",
+        "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6",
+        "#f97316", "#6366f1", "#84cc16", "#0ea5e9",
+    ]
+
+    @staticmethod
+    def draw_bar_chart(parent, title, data_dict, color=None):
+        """data_dict: { 'Label': Value, ... }"""
+        card = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=20, pady=20)
+        card.pack(fill='both', expand=True, pady=10)
+
+        tk.Label(card, text=title, font=StyleConfig.FONT_BOLD,
+                 bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w', pady=(0, 10))
+
+        canvas_h = 290
+        canvas = tk.Canvas(card, height=canvas_h, bg=StyleConfig.CARD_BG, highlightthickness=0)
+        canvas.pack(fill='x', expand=True)
+
+        if not data_dict:
+            canvas.create_text(200, 120, text="Không có dữ liệu", fill=StyleConfig.TEXT_LIGHT,
+                                font=StyleConfig.FONT_MD)
+            return card
+
+        vals = [v for v in data_dict.values() if v is not None]
+        if not vals:
+            canvas.create_text(200, 120, text="Không có dữ liệu", fill=StyleConfig.TEXT_LIGHT,
+                                font=StyleConfig.FONT_MD)
+            return card
+
+        max_v = max(vals) if max(vals) > 0 else 1
+
+        # Layout
+        n       = len(data_dict)
+        pad_l   = 48          # trái (cho trục Y)
+        pad_r   = 20
+        pad_top = 30
+        pad_bot = 55          # dưới (cho label khoa)
+        chart_w_ref = 800     # sẽ cập nhật khi canvas resize
+
+        y_base  = canvas_h - pad_bot
+        chart_h = y_base - pad_top
+
+        # ── Vẽ lưới ngang & nhãn trục Y ─────────────────────────────────
+        grid_steps = 4
+        for step in range(grid_steps + 1):
+            ratio = step / grid_steps
+            y  = y_base - ratio * chart_h
+            yv = int(max_v * ratio)
+            canvas.create_line(pad_l, y, canvas_h * 4, y,
+                               fill="#e2e8f0", width=1, dash=(4, 4))
+            canvas.create_text(pad_l - 6, y, text=str(yv),
+                                font=StyleConfig.FONT_XS,
+                                fill=StyleConfig.TEXT_GRAY, anchor='e')
+
+        colors = ModernChart.BAR_COLORS
+
+        def _draw_bars(cw):
+            """Vẽ lại tất cả cột theo chiều rộng canvas thực tế."""
+            canvas.delete("bars")
+            avail = cw - pad_l - pad_r
+            bar_w = max(20, min(60, avail // n - 12))
+            gap   = (avail - bar_w * n) // (n + 1)
+
+            for i, (k, val) in enumerate(data_dict.items()):
+                v   = val if val is not None else 0
+                x1  = pad_l + gap + i * (bar_w + gap)
+                x2  = x1 + bar_w
+                clr = colors[i % len(colors)]
+
+                target_h = (v / max_v) * chart_h if max_v > 0 else 0
+                y_top    = y_base - target_h
+
+                # Cột với bo góc trên
+                r = min(6, bar_w // 4)
+                canvas.create_rectangle(x1, y_top + r, x2, y_base,
+                                        fill=clr, outline="", tags="bars")
+                canvas.create_rectangle(x1, y_top, x2, y_top + r * 2,
+                                        fill=clr, outline="", tags="bars")
+                # Bo góc trên trái/phải
+                canvas.create_arc(x1, y_top, x1 + r * 2, y_top + r * 2,
+                                  start=90, extent=90, fill=clr, outline="", tags="bars")
+                canvas.create_arc(x2 - r * 2, y_top, x2, y_top + r * 2,
+                                  start=0, extent=90, fill=clr, outline="", tags="bars")
+
+                # Số trên đỉnh cột
+                canvas.create_text(x1 + bar_w / 2, y_top - 12,
+                                   text=str(v), font=(StyleConfig.FONT_FAMILY, 9, "bold"),
+                                   fill=clr, tags="bars")
+
+                # Tên khoa (cắt nếu quá dài)
+                max_chars = max(8, bar_w // 7)
+                lbl = k if len(k) <= max_chars else k[:max_chars - 2] + ".."
+                canvas.create_text(x1 + bar_w / 2, y_base + 14,
+                                   text=lbl, font=StyleConfig.FONT_XS,
+                                   fill=StyleConfig.TEXT_DARK, tags="bars",
+                                   width=bar_w + gap - 4)
+
+                # Chấm màu hình tròn nhỏ dưới label
+                canvas.create_oval(x1 + bar_w / 2 - 3, y_base + 28,
+                                   x1 + bar_w / 2 + 3, y_base + 34,
+                                   fill=clr, outline="", tags="bars")
+
+        def _on_resize(event):
+            _draw_bars(event.width)
+
+        canvas.bind("<Configure>", _on_resize)
+        # Vẽ lần đầu
+        canvas.update_idletasks()
+        w0 = canvas.winfo_width()
+        if w0 > 10:
+            _draw_bars(w0)
+
+        return card
+
+
+    @staticmethod
+    def draw_line_chart(parent, title, data_points, color=StyleConfig.INFO):
+        """data_points: [ (Label, Value), ... ]"""
+        card = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=20, pady=20)
+        card.pack(fill='both', expand=True, pady=10)
+        
+        tk.Label(card, text=title, font=StyleConfig.FONT_BOLD, 
+                 bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w', pady=(0, 25))
+        
+        canvas_h = 240
+        canvas = tk.Canvas(card, height=canvas_h, bg=StyleConfig.CARD_BG, highlightthickness=0)
+        canvas.pack(fill='x', expand=True)
+        
+        clean_points = [(lbl, v) for lbl, v in data_points if v is not None]
+        if not clean_points:
+            canvas.create_text(200, 100, text="Chưa đủ dữ liệu", fill=StyleConfig.TEXT_LIGHT)
+            return card
+
+        vals = [p[1] for p in clean_points]
+        mv = max(vals)
+        max_v = mv if mv and mv > 0 else 4.0
+        
+        start_x = 60
+        gap_x = 100
+        y_zero = canvas_h - 50
+        
+        points = []
+        for i, (lbl, v) in enumerate(clean_points):
+            x = start_x + i * gap_x
+            ratio = v / max_v
+            h = ratio * (canvas_h - 100)
+            y = y_zero - h
+            points.append((x, y))
+            
+            # Point & Value
+            canvas.create_oval(x-5, y-5, x+5, y+5, fill=color, outline="white", width=2)
+            canvas.create_text(x, y - 18, text=f"{v:.2f}", font=StyleConfig.FONT_XS, fill=color)
+            canvas.create_text(x, y_zero + 20, text=lbl, font=StyleConfig.FONT_XS, fill=StyleConfig.TEXT_DARK)
+
+        if len(points) > 1:
+            # Animation cho đường kẻ
+            def animate_line(idx):
+                if idx < len(points) - 1:
+                    p1, p2 = points[idx], points[idx+1]
+                    canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=color, width=3, smooth=True)
+                    parent.after(100, lambda: animate_line(idx + 1))
+            
+            animate_line(0)
+
+        return card
 
 
 # ── Dashboard Base ─────────────────────────────────────────────────────────────
@@ -233,10 +459,15 @@ class DashboardBase:
         self.header.pack_propagate(False)
         tk.Frame(main, bg=StyleConfig.BORDER, height=1).pack(fill='x')
 
+        self.header_icon = tk.Label(self.header, text="",
+                                    font=StyleConfig.FONT_LG,
+                                    bg=StyleConfig.CARD_BG, fg=StyleConfig.PRIMARY)
+        self.header_icon.pack(side='left', padx=(24, 0), pady=12)
+
         self.header_title = tk.Label(self.header, text="",
                                      font=StyleConfig.FONT_LG,
                                      bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK)
-        self.header_title.pack(side='left', padx=24, pady=12)
+        self.header_title.pack(side='left', padx=(8, 24), pady=12)
 
         # Logout Button in Header
         logout_btn = tk.Button(self.header, text="Đăng xuất", 
@@ -251,8 +482,9 @@ class DashboardBase:
         self._tick()
 
         # Content
-        self.content_area = tk.Frame(main, bg=StyleConfig.CONTENT_BG, padx=24, pady=20)
-        self.content_area.pack(fill='both', expand=True)
+        self._container = ScrollableFrame(main, bg=StyleConfig.CONTENT_BG)
+        self._container.pack(fill='both', expand=True)
+        self.content_area = self._container.scrollable_frame
 
         # Status bar
         tk.Frame(main, bg=StyleConfig.BORDER, height=1).pack(fill='x', side='bottom')
@@ -263,7 +495,7 @@ class DashboardBase:
                                    font=StyleConfig.FONT_XS,
                                    bg=StyleConfig.CARD_BG, fg=StyleConfig.SUCCESS)
         self.status_lbl.pack(side='left', padx=16)
-        tk.Label(sb, text="Phần mềm Quản lý điểm hệ Đại học  v5.0",
+        tk.Label(sb, text="Phần mềm Quản lý điểm hệ Đại học  ",
                  font=StyleConfig.FONT_XS,
                  bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_LIGHT).pack(side='right', padx=16)
 
@@ -293,11 +525,12 @@ class DashboardBase:
         inner.pack(side='left', fill='both', expand=True)
 
         ico = tk.Label(inner, text=icon, font=("Segoe UI", 13),
-                       bg=StyleConfig.SIDEBAR_BG, fg=StyleConfig.SIDEBAR_TEXT)
+                       bg=StyleConfig.SIDEBAR_BG, fg=StyleConfig.SIDEBAR_TEXT,
+                       width=3, anchor='center')
         ico.pack(side='left')
-        txt = tk.Label(inner, text=f"  {text}", font=StyleConfig.FONT_MD,
+        txt = tk.Label(inner, text=text, font=StyleConfig.FONT_MD,
                        bg=StyleConfig.SIDEBAR_BG, fg=StyleConfig.SIDEBAR_TEXT)
-        txt.pack(side='left')
+        txt.pack(side='left', padx=(8, 0))
 
         self._menu_parts.append((wrap, indicator, inner, ico, txt))
 
@@ -346,7 +579,8 @@ class DashboardBase:
 
     # ── Common Profile / Password Page ──────────────────────────────────────
     def page_profile(self):
-        self.header_title.config(text="👤  Hồ sơ cá nhân")
+        self.header_icon.config(text="👤")
+        self.header_title.config(text="Hồ sơ cá nhân")
         for w in self.content_area.winfo_children(): w.destroy()
 
         card = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=30, pady=24)
@@ -410,3 +644,29 @@ class DashboardBase:
 
         ttk.Button(pw_frame, text="Lưu mật khẩu mới", style="Primary.TButton",
                    command=do_change).grid(row=3, column=1, pady=16, sticky='w')
+
+# --- FINAL COMPONENTS ---
+class StatCard:
+    def __init__(self, parent, title, value, icon, color):
+        self.color = color
+        outer = tk.Frame(parent, bg=StyleConfig.BORDER, padx=1, pady=1)
+        outer.pack(side='left', padx=10, fill='both', expand=True)
+        self.frame = tk.Frame(outer, bg=StyleConfig.CARD_BG, padx=20, pady=20)
+        self.frame.pack(fill='both', expand=True)
+        canvas = tk.Canvas(self.frame, width=54, height=54, bg=StyleConfig.CARD_BG, highlightthickness=0)
+        canvas.pack(side='left', padx=(0, 15))
+        canvas.create_oval(2, 2, 52, 52, fill=color, outline='')
+        canvas.create_text(27, 27, text=icon, font=('Segoe UI', 20), fill='white')
+        right = tk.Frame(self.frame, bg=StyleConfig.CARD_BG)
+        right.pack(side='left', fill='both', expand=True)
+        tk.Label(right, text=title, font=StyleConfig.FONT_SM, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY).pack(anchor='w')
+        self.val_lbl = tk.Label(right, text=str(value), font=('Segoe UI', 20, 'bold'), bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK)
+        self.val_lbl.pack(anchor='w', pady=(2, 0))
+    def update(self, new_val):
+        self.val_lbl.config(text=str(new_val))
+
+def add_treeview_style(tree):
+    pass
+
+def insert_tree_row(tree, values, tags=()):
+    return tree.insert('', 'end', values=values, tags=tags)

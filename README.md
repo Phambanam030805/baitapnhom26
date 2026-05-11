@@ -1,7 +1,7 @@
-# Phần mềm Quản lý Điểm hệ Đại học v5.0
+# Phần mềm Quản lý Điểm hệ Đại học 
 
 ## 📖 Giới thiệu
-**Phần mềm Quản lý Điểm hệ Đại học** là một ứng dụng Desktop hiện đại được xây dựng hoàn toàn bằng ngôn ngữ Python. Ứng dụng sử dụng thư viện `Tkinter` cốt lõi nhưng được tùy biến sâu (custom styles) mang lại giao diện Material Design trẻ trung, chuyên nghiệp và hệ quản trị cơ sở dữ liệu `SQLite` gọn nhẹ không cần cài đặt thêm server.
+**Phần mềm Quản lý Điểm hệ Đại học** là một ứng dụng Desktop hiện đại được xây dựng hoàn toàn bằng ngôn ngữ Python. Ứng dụng sử dụng thư viện `Tkinter` cốt lõi nhưng được tùy biến sâu (custom styles) mang lại giao diện Material Design trẻ trung và hệ quản trị cơ sở dữ liệu **MySQL (thông qua XAMPP)** mạnh mẽ, phù hợp cho việc quản lý dữ liệu lớn và đồng bộ.
 
 Sản phẩm được thiết kế với kiến trúc phân quyền đa cấp (Role-based Access Control), tích hợp đầy đủ các luồng nghiệp vụ thực tế dành cho **Quản trị viên**, **Giảng viên** và **Sinh viên**.
 
@@ -40,44 +40,50 @@ Sản phẩm được thiết kế với kiến trúc phân quyền đa cấp (R
 Dự án được chia tách theo mô hình module hóa rõ ràng giúp dễ bảo trì và nâng cấp:
 
 - `main.py` : Tệp chạy chính (Entry point), điều hướng giao diện dựa theo Role đăng nhập.
-- `database.py` : Chứa toàn bộ các phương thức thao tác với CSDL (CRUD), xử lý business logic, tính toán GPA và mã hóa bảo mật.
+- `database.py` : Chứa toàn bộ các phương thức thao tác với CSDL (CRUD), xử lý business logic, tính toán GPA và mã hóa bảo mật (Sử dụng MySQL).
 - `gui_auth.py` : Màn hình Đăng nhập với giao diện hiện đại.
 - `gui_admin.py` : Dashboard điều khiển dành riêng cho Quản trị viên.
 - `gui_teacher.py`: Dashboard điều khiển dành riêng cho Giảng viên.
 - `gui_student.py`: Dashboard điều khiển dành riêng cho Sinh viên.
 - `gui_styles.py` : Hệ thống định dạng UI (Theme, màu sắc, Typography, custom widgets).
-- `models.py` : (Tùy chọn) Định nghĩa cấu trúc các đối tượng dữ liệu.
-- `excel_export.py` : Module chứa các tiện ích xuất báo cáo đa dạng ra định dạng Excel (sử dụng thư viện `openpyxl`).
-- `ql_diem.db` : Tệp cơ sở dữ liệu SQLite (sẽ tự động khởi tạo nếu chưa tồn tại).
+- `excel_export.py` : Module chứa các tiện ích xuất báo cáo ra định dạng Excel (sử dụng thư viện `openpyxl`).
 - Các tệp `import_*.py` : Bộ công cụ/scripts hỗ trợ nạp dữ liệu mẫu nhanh (ví dụ `import_sinh_vien.py`, `import_mon_hoc.py`...).
-- `fix_db.py`, `reset_khoa_lop.py`: Các script hỗ trợ dọn dẹp hoặc sửa lỗi CSDL nếu cần.
+- `reset_khoa_lop.py`: Script hỗ trợ dọn dẹp và khởi tạo lại danh mục Khoa/Lớp hành chính.
 
 ---
 
 ## 💻 Hướng dẫn Cài đặt & Chạy ứng dụng
 
-**Yêu cầu môi trường:** Python 3.8 trở lên.
+**Yêu cầu môi trường:** Python 3.8 trở lên và **XAMPP**.
 
-1. Mở Terminal / Command Prompt tại thư mục dự án `QuanLyDiemDH`.
-2. Cài đặt các thư viện phụ thuộc (nếu chưa có):
-   ```bash
-   pip install openpyxl
-   ```
-3. Khởi động phần mềm bằng lệnh:
-   ```bash
-   python main.py
-   ```
-4. Đăng nhập với các tài khoản mặc định (Mật khẩu mặc định đều là `123`):
-   - **Admin:** `admin`
-   - **Giảng viên:** `GV001`, `GV002`...
-   - **Sinh viên:** `20240001`, `20240002`... (Dựa vào dữ liệu import)
+### Bước 1: Cấu hình Cơ sở dữ liệu (MySQL)
+1. Mở **XAMPP Control Panel**, nhấn **Start** cho cả **Apache** và **MySQL**.
+2. Truy cập vào `http://localhost/phpmyadmin`.
+3. Tạo một Database mới với tên: `ql_diem_dh`.
+4. (Lưu ý: Hệ thống sẽ tự động tạo các bảng khi bạn chạy phần mềm lần đầu).
 
-> **Lưu ý:** Nếu chạy ứng dụng lần đầu và CSDL đang trống, bạn có thể chạy lần lượt các script có tiền tố `import_` (Ví dụ: `python import_sinh_vien.py`) để tự động khởi tạo dữ liệu mẫu thử nghiệm một cách nhanh chóng.
+### Bước 2: Cài đặt thư viện Python
+Mở Terminal / Command Prompt tại thư mục dự án và chạy lệnh:
+```bash
+pip install mysql-connector-python openpyxl
+```
+
+### Bước 3: Khởi động ứng dụng
+```bash
+python main.py
+```
+
+### Bước 4: Tài khoản đăng nhập mặc định
+(Mật khẩu mặc định đều là `123`)
+- **Admin:** `admin`
+- **Giảng viên:** `GV001`, `GV002`...
+- **Sinh viên:** `20240001`, `20240002`... (Dựa vào dữ liệu bạn đã import)
+
+> **Mẹo:** Chạy các script `import_*.py` để có dữ liệu mẫu ngay lập tức.
 
 ---
 
 ## 🎨 Thông tin thiết kế UI/UX
-
-- Ứng dụng không phụ thuộc vào các thư viện giao diện nặng bên thứ ba (như PyQt, PySide, CustomTkinter). Thay vào đó, dự án can thiệp trực tiếp vào `ttk.Style` và các phương thức vẽ đồ họa của `Canvas` để mang đến diện mạo Material/Flat Design thực sự sang trọng.
-- Hỗ trợ thay đổi kích thước cửa sổ (responsive) linh hoạt, các bảng biểu tự động dãn cách vừa vặn với kích thước màn hình.
-- Tích hợp các hiệu ứng hover mượt mà cùng bảng màu Pastel/Indigo (Xanh chàm) chủ đạo đang là xu hướng hiện nay.
+- Ứng dụng can thiệp trực tiếp vào `ttk.Style` và các phương thức vẽ đồ họa của `Canvas` để mang đến diện mạo Material/Flat Design sang trọng.
+- Hỗ trợ thay đổi kích thước cửa sổ (responsive) linh hoạt.
+- Tích hợp các hiệu ứng hover mượt mà cùng bảng màu Pastel/Indigo chủ đạo.

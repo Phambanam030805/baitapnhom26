@@ -9,7 +9,7 @@ def _make_tree(parent, cols, widths):
     add_treeview_style(tree)
     for col, w in zip(cols, widths):
         tree.heading(col, text=col)
-        tree.column(col, width=w, anchor='center' if w < 150 else 'w')
+        tree.column(col, width=w, minwidth=w, anchor='center' if w < 160 else 'w')
     sb = ttk.Scrollbar(parent, orient='vertical', command=tree.yview)
     tree.configure(yscrollcommand=sb.set)
     sb.pack(side='right', fill='y')
@@ -18,7 +18,7 @@ def _make_tree(parent, cols, widths):
 
 
 def _card(parent, title):
-    f = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=20, pady=16)
+    f = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=24, pady=16)
     f.pack(fill='both', expand=True, pady=(0, 0))
     if title:
         tk.Label(f, text=title, font=StyleConfig.FONT_BOLD,
@@ -28,17 +28,17 @@ def _card(parent, title):
 
 def _form_card(parent, fields, on_add, on_edit, on_del, tree):
     """Header card with auto-form + buttons. Returns list of entry/combobox widgets."""
-    c = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=20, pady=14)
-    c.pack(fill='x', pady=(0, 14))
+    c = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=24, pady=14)
+    c.pack(fill='x', pady=(0, 10))
 
     form = tk.Frame(c, bg=StyleConfig.CARD_BG)
     form.pack(fill='x')
     ents = []
     for i, (lbl, w, is_cb) in enumerate(fields):
         tk.Label(form, text=lbl, font=StyleConfig.FONT_SM,
-                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).grid(row=0, column=i, padx=6, sticky='w')
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).grid(row=0, column=i, padx=8, sticky='w')
         e = ttk.Combobox(form, width=w, state='readonly') if is_cb else ttk.Entry(form, width=w)
-        e.grid(row=1, column=i, padx=6, pady=4)
+        e.grid(row=1, column=i, padx=8, pady=5, sticky='ew')
         ents.append(e)
 
     def on_sel(evt):
@@ -52,7 +52,7 @@ def _form_card(parent, fields, on_add, on_edit, on_del, tree):
     tree.bind('<<TreeviewSelect>>', on_sel)
 
     bf = tk.Frame(c, bg=StyleConfig.CARD_BG)
-    bf.pack(fill='x', pady=(10, 0))
+    bf.pack(fill='x', pady=(12, 0))
     ttk.Button(bf, text='＋ Thêm',  style='Primary.TButton', command=on_add).pack(side='left', padx=4)
     ttk.Button(bf, text='✎ Sửa',   style='Warning.TButton', command=on_edit).pack(side='left', padx=4)
     ttk.Button(bf, text='✕ Xóa',   style='Danger.TButton',  command=on_del).pack(side='left', padx=4)
@@ -79,14 +79,18 @@ class AdminDashboard(DashboardBase):
         if first: first()
 
     def show_page(self, code):
-        self.header_title.config(text={
-            'DASH': '📊  Tổng quan hệ thống', 'PROF': '👤  Hồ sơ cá nhân',
-            'SV': '👥  Quản lý Sinh viên', 'GV': '👨‍🏫  Quản lý Giảng viên',
-            'USR': '🔑  Quản lý Tài khoản', 'LHC': '🏢  Lớp Hành chính',
-            'KH': '🏫  Quản lý Khoa', 'MH': '📚  Quản lý Môn học',
-            'LHP': '📅  Lớp Học phần', 'HK': '⏱️  Học kỳ', 'TB': '📢  Thông báo',
-            'NK': '📜  Nhật ký hệ thống', 'BV': '🏆  Bảng vàng sinh viên'
-        }.get(code, code))
+        mapping = {
+            'DASH': ('📊', 'Tổng quan hệ thống'), 'PROF': ('👤', 'Hồ sơ cá nhân'),
+            'SV': ('👥', 'Quản lý Sinh viên'), 'GV': ('👨‍🏫', 'Quản lý Giảng viên'),
+            'USR': ('🔑', 'Quản lý Tài khoản'), 'LHC': ('🏢', 'Lớp Hành chính'),
+            'KH': ('🏫', 'Quản lý Khoa'), 'MH': ('📚', 'Quản lý Môn học'),
+            'LHP': ('📅', 'Lớp Học phần'), 'HK': ('⏱️', 'Học kỳ'), 'TB': ('📢', 'Thông báo'),
+            'NK': ('📜', 'Nhật ký hệ thống'), 'BV': ('🏆', 'Bảng vàng sinh viên')
+        }
+        icon, title = mapping.get(code, ('', code))
+        self.header_icon.config(text=icon)
+        self.header_title.config(text=title)
+        
         for w in self.content_area.winfo_children(): w.destroy()
         {'DASH': self.page_dashboard, 'PROF': self.page_profile,
          'SV': self.page_sv, 'GV': self.page_gv, 'USR': self.page_users,
@@ -113,26 +117,43 @@ class AdminDashboard(DashboardBase):
         StatCard(sf, "Lớp Học Phần", lhp_count, "Lớp", StyleConfig.SUCCESS)
         StatCard(sf, "Học Kỳ", hk_count, "HK", StyleConfig.WARNING)
 
-        card = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=20, pady=20)
-        card.pack(fill='both', expand=True)
+        # Main Layout for charts
+        main_dash = tk.Frame(self.content_area, bg=StyleConfig.CONTENT_BG)
+        main_dash.pack(fill='both', expand=True)
+
+        card = tk.Frame(main_dash, bg=StyleConfig.CARD_BG, padx=25, pady=20)
+        card.pack(fill='x', pady=(0, 15))
         tk.Label(card, text="Trạng thái hệ thống", font=StyleConfig.FONT_LG, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w', pady=(0,10))
-        tk.Label(card, text="Hệ thống Quản lý Điểm Đại học v5.0 đang hoạt động ổn định.\nChọn các chức năng ở menu bên trái để tiếp tục.", font=StyleConfig.FONT_MD, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY, justify='left').pack(anchor='w')
+        tk.Label(card, text="Hệ thống Quản lý Điểm Đại học đang hoạt động ổn định. Dữ liệu được đồng bộ thời gian thực từ cơ sở dữ liệu.", font=StyleConfig.FONT_MD, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY, justify='left').pack(anchor='w')
+
+        from gui_styles import ModernChart
+        # Query data for chart
+        self.db.cursor.execute("SELECT k.ten_khoa, COUNT(s.id) FROM khoa k LEFT JOIN lop_hc l ON k.id=l.id_khoa LEFT JOIN sinh_vien s ON l.id=s.id_lop_hc GROUP BY k.id")
+        chart_data = {row[0]: row[1] for row in self.db.cursor.fetchall()}
+        ModernChart.draw_bar_chart(main_dash, "Phân bổ sinh viên theo Khoa", chart_data, color=StyleConfig.INFO)
 
     # ── SINH VIEN ─────────────────────────────────────────────────────────
     def page_sv(self):
         # Search toolbar
         tb = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=16, pady=10)
         tb.pack(fill='x', pady=(0, 8))
-        tk.Label(tb, text="Tim kiem:", font=StyleConfig.FONT_SM,
+        
+        tk.Label(tb, text="Tìm kiếm:", font=StyleConfig.FONT_SM,
                  fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
-        ent_search = ttk.Entry(tb, width=28)
-        ent_search.pack(side='left', padx=(6, 0))
-        ttk.Button(tb, text="Xuat Excel", style="Success.TButton",
+        ent_search = ttk.Entry(tb, width=22)
+        ent_search.pack(side='left', padx=(6, 16))
+
+        tk.Label(tb, text="Lọc Khoa:", font=StyleConfig.FONT_SM,
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
+        cb_filter_kh = ttk.Combobox(tb, width=20, state='readonly')
+        cb_filter_kh.pack(side='left', padx=(6, 0))
+
+        ttk.Button(tb, text="Xuất Excel", style="Success.TButton",
                    command=lambda: excel_export.export_danh_sach_sv(
                        self.db.get_all_sinh_vien())).pack(side='right', padx=4)
 
-        cols = ('ID','MSV','Ho ten','Ngay sinh','GT','Lop HC')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,90,200,110,60,140])
+        cols = ('ID','MSV','Họ tên','Ngày sinh','GT','Lớp HC')
+        tree = _make_tree(_card(self.content_area, None), cols, [60,110,250,130,70,200])
         self._sv_all = []
 
         def refresh():
@@ -140,20 +161,36 @@ class AdminDashboard(DashboardBase):
             lhcs = self.db.get_all_lop_hc()
             self.lhc_map = {r[2]: r[0] for r in lhcs}
             ents[4]['values'] = list(self.lhc_map.keys())
+            
+            # Update Khoa filter
+            khs = self.db.get_all_khoa()
+            cb_filter_kh['values'] = ["Tất cả"] + [k[2] for k in khs]
+            cb_filter_kh.set("Tất cả")
+            
             _apply_filter()
 
-        def _apply_filter():
+        def _apply_filter(evt=None):
             for i in tree.get_children(): tree.delete(i)
             kw = ent_search.get().strip().lower()
-            filtered = [r for r in self._sv_all
-                        if not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()]
-            for r in filtered: insert_tree_row(tree, r)
+            kh_sel = cb_filter_kh.get()
+            
+            filtered = []
+            for r in self._sv_all:
+                # r: (id, ma_sv, ho_ten, ns, gt, ten_lop, ten_khoa)
+                match_kw = not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()
+                match_kh = kh_sel == "Tất cả" or r[6] == kh_sel
+                if match_kw and match_kh:
+                    filtered.append(r)
+            
+            for r in filtered: insert_tree_row(tree, r[:6]) # Only show first 6 cols
+            self.set_status(f"Tìm thấy {len(filtered)} sinh viên")
 
-        ent_search.bind("<KeyRelease>", lambda e: _apply_filter())
+        ent_search.bind("<KeyRelease>", _apply_filter)
+        cb_filter_kh.bind("<<ComboboxSelected>>", _apply_filter)
 
         def add():
             if self.db.insert_sinh_vien(ents[0].get(), ents[1].get(), ents[2].get(),
-                                        ents[3].get(), self.lhc_map.get(ents[4].get())):
+                                         ents[3].get(), self.lhc_map.get(ents[4].get())):
                 messagebox.showinfo('OK', 'Da them sinh vien (Pass: 123)'); refresh()
             else: messagebox.showerror('Loi', 'Them that bai (trung ma)')
         def edit():
@@ -171,7 +208,7 @@ class AdminDashboard(DashboardBase):
                 if ok: refresh()
                 else: messagebox.showwarning('Canh bao', msg)
         ents = _form_card(self.content_area,
-                          [('MSV',14,0),('Ho ten',22,0),('Ngay sinh',13,0),('GT',8,0),('Lop HC',18,1)],
+                          [('MSV',16,0),('Họ tên',26,0),('Ngày sinh',14,0),('GT',10,0),('Lớp HC',22,1)],
                           add, edit, delete, tree)
         refresh()
 
@@ -180,30 +217,50 @@ class AdminDashboard(DashboardBase):
         # Search toolbar
         tb = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=16, pady=10)
         tb.pack(fill='x', pady=(0, 8))
-        tk.Label(tb, text="Tim kiem:", font=StyleConfig.FONT_SM,
+        tk.Label(tb, text="Tìm kiếm:", font=StyleConfig.FONT_SM,
                  fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
-        ent_search = ttk.Entry(tb, width=28)
-        ent_search.pack(side='left', padx=(6, 0))
-        ttk.Button(tb, text="Xuat Excel", style="Success.TButton",
+        ent_search = ttk.Entry(tb, width=22)
+        ent_search.pack(side='left', padx=(6, 16))
+
+        tk.Label(tb, text="Lọc Khoa:", font=StyleConfig.FONT_SM,
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
+        cb_filter_kh = ttk.Combobox(tb, width=20, state='readonly')
+        cb_filter_kh.pack(side='left', padx=(6, 0))
+
+        ttk.Button(tb, text="Xuất Excel", style="Success.TButton",
                    command=lambda: excel_export.export_danh_sach_gv(
                        self.db.get_all_giang_vien())).pack(side='right', padx=4)
 
-        cols = ('ID','Ma GV','Ho ten','Khoa','Email','SDT')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,90,200,150,170,110])
+        cols = ('ID','Mã GV','Họ tên','Khoa','Email','SĐT')
+        tree = _make_tree(_card(self.content_area, None), cols, [60,110,230,180,200,130])
         self._gv_all = []
 
         def refresh():
             self._gv_all = self.db.get_all_giang_vien()
+            
+            # Update Khoa filter
+            khs = self.db.get_all_khoa()
+            cb_filter_kh['values'] = ["Tất cả"] + [k[2] for k in khs]
+            cb_filter_kh.set("Tất cả")
+            
             _apply_filter()
 
-        def _apply_filter():
+        def _apply_filter(evt=None):
             for i in tree.get_children(): tree.delete(i)
             kw = ent_search.get().strip().lower()
-            filtered = [r for r in self._gv_all
-                        if not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower() or kw in str(r[3]).lower()]
+            kh_sel = cb_filter_kh.get()
+            
+            filtered = []
+            for r in self._gv_all:
+                match_kw = not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()
+                match_kh = kh_sel == "Tất cả" or r[3] == kh_sel
+                if match_kw and match_kh:
+                    filtered.append(r)
             for r in filtered: insert_tree_row(tree, r)
+            self.set_status(f"Tìm thấy {len(filtered)} giảng viên")
 
-        ent_search.bind("<KeyRelease>", lambda e: _apply_filter())
+        ent_search.bind("<KeyRelease>", _apply_filter)
+        cb_filter_kh.bind("<<ComboboxSelected>>", _apply_filter)
 
         def add():
             if self.db.insert_giang_vien(ents[0].get(), ents[1].get(), ents[2].get(), ents[3].get(), ents[4].get()):
@@ -222,7 +279,7 @@ class AdminDashboard(DashboardBase):
                 if ok: refresh()
                 else: messagebox.showwarning('Canh bao', msg)
         ents = _form_card(self.content_area,
-                          [('Ma GV',12,0),('Ho ten',22,0),('Khoa',16,0),('Email',18,0),('SDT',12,0)],
+                          [('Mã GV',14,0),('Họ tên',24,0),('Khoa',18,0),('Email',22,0),('SĐT',14,0)],
                           add, edit, delete, tree)
         refresh()
 
@@ -230,7 +287,7 @@ class AdminDashboard(DashboardBase):
     def page_users(self):
         cols = ('ID','Username','Role','Trạng thái')
         tc = _card(self.content_area, None)
-        tree = _make_tree(tc, cols, [55, 180, 100, 130])
+        tree = _make_tree(tc, cols, [60, 240, 130, 160])
 
         def refresh():
             for i in tree.get_children(): tree.delete(i)
@@ -321,7 +378,7 @@ class AdminDashboard(DashboardBase):
     # ── KHOA ───────────────────────────────────────────────────────────────
     def page_kh(self):
         cols = ('ID','Mã Khoa','Tên Khoa')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,120,280])
+        tree = _make_tree(_card(self.content_area, None), cols, [60,150,380])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_all_khoa(): insert_tree_row(tree, r)
@@ -340,13 +397,13 @@ class AdminDashboard(DashboardBase):
                 ok, msg = self.db.delete_khoa(tree.item(sel[0])['values'][0])
                 if ok: refresh()
                 else: messagebox.showwarning('Cảnh báo', msg)
-        ents = _form_card(self.content_area, [('Mã Khoa',16,0),('Tên Khoa',34,0)], add, edit, delete, tree)
+        ents = _form_card(self.content_area, [('Mã Khoa',18,0),('Tên Khoa',44,0)], add, edit, delete, tree)
         refresh()
 
     # ── LỚP HÀNH CHÍNH ─────────────────────────────────────────────────────
     def page_lhc(self):
         cols = ('ID','Mã Lớp','Tên Lớp','Khoa')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,110,220,180])
+        tree = _make_tree(_card(self.content_area, None), cols, [60,140,280,240])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_all_lop_hc(): insert_tree_row(tree, r)
@@ -368,13 +425,13 @@ class AdminDashboard(DashboardBase):
                 ok, msg = self.db.delete_lop_hc(tree.item(sel[0])['values'][0])
                 if ok: refresh()
                 else: messagebox.showwarning('Cảnh báo', msg)
-        ents = _form_card(self.content_area, [('Mã Lớp',16,0),('Tên Lớp',26,0),('Khoa',20,1)], add, edit, delete, tree)
+        ents = _form_card(self.content_area, [('Mã Lớp',18,0),('Tên Lớp',32,0),('Khoa',26,1)], add, edit, delete, tree)
         refresh()
 
     # ── MÔN HỌC ────────────────────────────────────────────────────────────
     def page_mh(self):
         cols = ('ID','Mã MH','Tên Môn','Số TC')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,100,260,80])
+        tree = _make_tree(_card(self.content_area, None), cols, [60,130,360,100])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_all_mon_hoc(): insert_tree_row(tree, r[:4])
@@ -397,13 +454,13 @@ class AdminDashboard(DashboardBase):
                 ok, msg = self.db.delete_mon_hoc(tree.item(sel[0])['values'][0])
                 if ok: refresh()
                 else: messagebox.showwarning('Cảnh báo', msg)
-        ents = _form_card(self.content_area, [('Mã MH',12,0),('Tên Môn',28,0),('Số TC',8,0)], add, edit, delete, tree)
+        ents = _form_card(self.content_area, [('Mã MH',14,0),('Tên Môn',36,0),('Số TC',10,0)], add, edit, delete, tree)
         refresh()
 
     # ── LỚP HỌC PHẦN ───────────────────────────────────────────────────────
     def page_lhp(self):
         cols = ('ID','Mã Lớp','Môn','Giảng viên','Học kỳ','Lịch học','Trạng thái')
-        tree = _make_tree(_card(self.content_area, None), cols, [50,100,180,160,130,150,90])
+        tree = _make_tree(_card(self.content_area, None), cols, [55,120,210,190,150,180,110])
 
         def refresh():
             for i in tree.get_children(): tree.delete(i)
@@ -461,7 +518,7 @@ class AdminDashboard(DashboardBase):
                 else: messagebox.showwarning('Cảnh báo', msg)
 
         ents = _form_card(self.content_area,
-                          [('Mã Lớp',10,0),('Môn',18,1),('GV',18,1),('Kỳ',14,1),('Thứ',9,1),('Ca',13,1)],
+                          [('Mã Lớp',12,0),('Môn',22,1),('GV',22,1),('Kỳ',16,1),('Thứ',11,1),('Ca',15,1)],
                           add, edit, delete, tree)
         tree.bind('<<TreeviewSelect>>', on_sel)
         refresh()
@@ -469,7 +526,7 @@ class AdminDashboard(DashboardBase):
     # ── HỌC KỲ ─────────────────────────────────────────────────────────────
     def page_hk(self):
         cols = ('ID','Tên Kỳ','Năm học')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,200,160])
+        tree = _make_tree(_card(self.content_area, None), cols, [60,280,200])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_all_hoc_ky(): insert_tree_row(tree, r[:3])
@@ -481,7 +538,7 @@ class AdminDashboard(DashboardBase):
     # ── THÔNG BÁO ──────────────────────────────────────────────────────────
     def page_tb(self):
         cols = ('ID','Tiêu đề','Ngày đăng','Người đăng')
-        tree = _make_tree(_card(self.content_area, None), cols, [55,300,140,120])
+        tree = _make_tree(_card(self.content_area, None), cols, [60,420,160,150])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_all_thong_bao(): insert_tree_row(tree, (r[0],r[1],r[3],r[4]))
@@ -493,13 +550,13 @@ class AdminDashboard(DashboardBase):
             sel = tree.selection()
             if sel and messagebox.askyesno('Xác nhận','Xóa thông báo này?'):
                 self.db.delete_thong_bao(tree.item(sel[0])['values'][0]); refresh()
-        ents = _form_card(self.content_area, [('Tiêu đề',46,0)], add, lambda: None, delete, tree)
+        ents = _form_card(self.content_area, [('Tiêu đề',60,0)], add, lambda: None, delete, tree)
         refresh()
 
     # ── NHẬT KÝ ────────────────────────────────────────────────────────────
     def page_nk(self):
         cols = ('Người dùng','Hành động','Thời gian','Chi tiết')
-        tree = _make_tree(_card(self.content_area, None), cols, [120,150,180,350])
+        tree = _make_tree(_card(self.content_area, None), cols, [140,180,200,480])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_nhat_ky(): insert_tree_row(tree, r)
@@ -515,6 +572,6 @@ class AdminDashboard(DashboardBase):
         
         card = _card(self.content_area, "Top 20 sinh viên có GPA cao nhất hệ thống")
         cols = ('MSV','Họ tên','GPA Tích lũy')
-        tree = _make_tree(card, cols, [120,250,150])
+        tree = _make_tree(card, cols, [150,320,180])
         for r in self.db.get_top_sinh_vien(20):
             insert_tree_row(tree, r)
