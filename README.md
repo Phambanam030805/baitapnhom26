@@ -1,89 +1,121 @@
-# Phần mềm Quản lý Điểm hệ Đại học 
+# 🎓 Phần mềm Quản lý Điểm Hệ Đại học (UniGrade Manager)
 
-## 📖 Giới thiệu
-**Phần mềm Quản lý Điểm hệ Đại học** là một ứng dụng Desktop hiện đại được xây dựng hoàn toàn bằng ngôn ngữ Python. Ứng dụng sử dụng thư viện `Tkinter` cốt lõi nhưng được tùy biến sâu (custom styles) mang lại giao diện Material Design trẻ trung và hệ quản trị cơ sở dữ liệu **MySQL (thông qua XAMPP)** mạnh mẽ, phù hợp cho việc quản lý dữ liệu lớn và đồng bộ.
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+[![Database](https://img.shields.io/badge/database-MySQL-orange.svg)](https://www.mysql.com/)
+[![UI Library](https://img.shields.io/badge/UI-Tkinter%20Custom-green.svg)](https://docs.python.org/3/library/tkinter.html)
 
-Sản phẩm được thiết kế với kiến trúc phân quyền đa cấp (Role-based Access Control), tích hợp đầy đủ các luồng nghiệp vụ thực tế dành cho **Quản trị viên**, **Giảng viên** và **Sinh viên**.
-
----
-
-## 🚀 Các tính năng nổi bật
-
-### 1. Hệ thống Đăng nhập & Phân quyền (Role-based)
-- **Mã hóa an toàn:** Mật khẩu được băm (hash) bằng thuật toán chuẩn `SHA-256`.
-- **Khóa/Mở tài khoản:** Hệ thống hỗ trợ Admin khóa các tài khoản vi phạm.
-- **Phân quyền chặt chẽ:** Tự động điều hướng và hiển thị các tính năng tương ứng với 3 loại tài khoản: `admin`, `teacher`, `student`.
-
-### 2. Dành cho Quản trị viên (Admin)
-- **Quản lý toàn diện:** Quản lý thông tin **Sinh viên**, **Giảng viên**, **Tài khoản người dùng**.
-- **Quản lý cơ cấu đào tạo:** Dễ dàng thao tác thêm, sửa, xóa với **Khoa**, **Môn học**, **Lớp Hành chính**, **Lớp Học phần** và **Học kỳ**.
-- **Bảng tin hệ thống:** Đăng tải thông báo chung hiển thị trên trang chủ của Giảng viên và Sinh viên.
-- **Xuất dữ liệu:** Hỗ trợ xuất danh sách Sinh viên, danh sách Giảng viên ra file Excel.
-
-### 3. Dành cho Giảng viên
-- **Quản lý điểm số:** Giao diện nhập điểm trực quan, tự động tính toán điểm Trung bình (từ các cột Chuyên cần, Giữa kỳ, Cuối kỳ) và tự động xếp loại Điểm chữ.
-- **Theo dõi lớp học:** Tô sáng sinh viên đang chọn, hỗ trợ phân loại sinh viên Đạt/Trượt.
-- **Thống kê giảng dạy:** Xem số lượng sinh viên Đạt/Trượt, tỷ lệ qua môn ở từng Lớp học phần do mình phụ trách.
-- **Xuất bảng điểm Excel:** Hỗ trợ xuất bảng điểm tổng kết của Lớp học phần phục vụ in ấn.
-- Xem bảng tin thông báo từ hệ thống.
-
-### 4. Dành cho Sinh viên
-- **Đăng ký học phần:** Xem danh sách các Lớp học phần đang mở trong kỳ và thao tác Đăng ký/Hủy đăng ký môn học trực tuyến.
-- **Theo dõi kết quả học tập:** Xem bảng điểm cá nhân chi tiết từng môn (Điểm hệ 10, Điểm chữ, Điểm hệ 4). Hệ thống tự động tính toán số Tín chỉ tích lũy và **GPA tổng**.
-- **Xuất bảng điểm Excel:** Tải xuống bảng điểm cá nhân dưới dạng file Excel chuẩn form.
-- Xem bảng tin thông báo từ Admin.
+**UniGrade Manager** là một giải pháp quản lý đào tạo toàn diện dành cho các trường đại học, được phát triển trên nền tảng Python với tiêu chí: **Trực quan - Bảo mật - Hiệu quả**. Ứng dụng không chỉ đơn thuần là công cụ nhập liệu mà còn là một hệ sinh thái nhỏ kết nối giữa Quản trị viên, Giảng viên và Sinh viên.
 
 ---
 
-## 📂 Cấu trúc mã nguồn
-
-Dự án được chia tách theo mô hình module hóa rõ ràng giúp dễ bảo trì và nâng cấp:
-
-- `main.py` : Tệp chạy chính (Entry point), điều hướng giao diện dựa theo Role đăng nhập.
-- `database.py` : Chứa toàn bộ các phương thức thao tác với CSDL (CRUD), xử lý business logic, tính toán GPA và mã hóa bảo mật (Sử dụng MySQL).
-- `gui_auth.py` : Màn hình Đăng nhập với giao diện hiện đại.
-- `gui_admin.py` : Dashboard điều khiển dành riêng cho Quản trị viên.
-- `gui_teacher.py`: Dashboard điều khiển dành riêng cho Giảng viên.
-- `gui_student.py`: Dashboard điều khiển dành riêng cho Sinh viên.
-- `gui_styles.py` : Hệ thống định dạng UI (Theme, màu sắc, Typography, custom widgets).
-- `excel_export.py` : Module chứa các tiện ích xuất báo cáo ra định dạng Excel (sử dụng thư viện `openpyxl`).
-- Các tệp `import_*.py` : Bộ công cụ/scripts hỗ trợ nạp dữ liệu mẫu nhanh (ví dụ `import_sinh_vien.py`, `import_mon_hoc.py`...).
-- `reset_khoa_lop.py`: Script hỗ trợ dọn dẹp và khởi tạo lại danh mục Khoa/Lớp hành chính.
+## ✨ Điểm khác biệt so với các phần mềm cơ bản
+Không giống như các bài tập quản lý điểm thông thường sử dụng file Text hay SQLite đơn giản, **UniGrade Manager** được đầu tư kỹ lưỡng về:
+- **Trải nghiệm người dùng (UX):** Giao diện được tinh chỉnh bằng hệ thống Custom Styles, mô phỏng phong cách Material Design hiện đại, mang lại cảm giác chuyên nghiệp thay vì giao diện thô sơ mặc định của Tkinter.
+- **Kiến trúc dữ liệu:** Sử dụng MySQL cho phép xử lý quan hệ phức tạp giữa Sinh viên - Lớp học phần - Điểm số một cách mượt mà và an toàn.
+- **Tính tự động hóa:** Hệ thống tự động tính điểm trung bình, quy đổi điểm chữ (A, B, C, D, F), tính GPA hệ 4 và xếp loại học lực ngay khi giảng viên nhập điểm.
 
 ---
 
-## 💻 Hướng dẫn Cài đặt & Chạy ứng dụng
+## 🛠 Công nghệ sử dụng (Tech Stack)
 
-**Yêu cầu môi trường:** Python 3.8 trở lên và **XAMPP**.
+| Thành phần | Công nghệ | Chi tiết |
+|---|---|---|
+| **Ngôn ngữ** | Python 3.8+ | Ngôn ngữ lập trình chính |
+| **Giao diện (UI)** | Tkinter + ttk.Style | Tùy biến sâu Canvas & Styles |
+| **Cơ sở dữ liệu** | MySQL (XAMPP) | Quản trị dữ liệu quan hệ |
+| **Xử lý Excel** | OpenPyXL | Xuất báo cáo, bảng điểm chuyên nghiệp |
+| **Bảo mật** | SHA-256 | Mã hóa mật khẩu người dùng |
 
-### Bước 1: Cấu hình Cơ sở dữ liệu (MySQL)
-1. Mở **XAMPP Control Panel**, nhấn **Start** cho cả **Apache** và **MySQL**.
-2. Truy cập vào `http://localhost/phpmyadmin`.
-3. Tạo một Database mới với tên: `ql_diem_dh`.
-4. (Lưu ý: Hệ thống sẽ tự động tạo các bảng khi bạn chạy phần mềm lần đầu).
+---
 
-### Bước 2: Cài đặt thư viện Python
-Mở Terminal / Command Prompt tại thư mục dự án và chạy lệnh:
+## 🚀 Tính năng cốt lõi
+
+### 🔑 Hệ thống xác thực & Phân quyền
+- **Đăng nhập đa vai trò:** Tự động nhận diện quyền hạn để hiển thị Dashboard tương ứng.
+- **Bảo mật:** Mật khẩu được băm một chiều, ngăn chặn rò rỉ dữ liệu ngay cả khi lộ database.
+- **Quản lý trạng thái:** Admin có quyền khóa/mở tài khoản linh hoạt.
+
+### 👤 Module Quản trị viên (Admin)
+- **Quản trị hệ thống:** Quản lý tập trung thông tin Khoa, Lớp hành chính, Môn học và Học kỳ.
+- **Quản lý nhân sự:** Thêm mới/Chỉnh sửa thông tin hàng loạt Sinh viên và Giảng viên.
+- **Thông báo:** Đăng tin tức lên bảng tin chung toàn trường.
+- **Báo cáo:** Xuất danh sách nhân sự ra Excel chỉ với một click.
+
+### 👨‍🏫 Module Giảng viên (Teacher)
+- **Quản lý lớp học phần:** Theo dõi danh sách sinh viên trong từng lớp mình phụ trách.
+- **Nhập điểm thông minh:** Giao diện lưới (Treeview) hỗ trợ nhập điểm thành phần. Hệ thống tự động "nhảy" điểm tổng kết và điểm chữ.
+- **Thống kê:** Xem tỷ lệ Đạt/Trượt trực quan.
+- **Báo cáo:** Xuất bảng điểm lớp học phần phục vụ lưu trữ/in ấn.
+
+### 🎓 Module Sinh viên (Student)
+- **Đăng ký môn học:** Quy trình đăng ký/hủy lớp học phần trực tuyến đơn giản.
+- **Tra cứu kết quả:** Xem bảng điểm cá nhân chi tiết qua từng kỳ học.
+- **Theo dõi tiến độ:** Tự động tính tổng tín chỉ tích lũy và GPA toàn khóa.
+- **Cá nhân hóa:** Tự xuất bảng điểm cá nhân ra Excel.
+
+---
+
+## 📂 Cấu trúc dự án
+```text
+C:\Users\ADMIN\QuanLyDiemDH
+├── main.py              # Điểm khởi đầu của ứng dụng
+├── database.py          # Trái tim của hệ thống (Xử lý SQL & Business Logic)
+├── models.py            # Định nghĩa các lớp đối tượng (POJO style)
+├── gui_styles.py        # Định nghĩa màu sắc, font chữ, styles UI
+├── gui_auth.py          # Màn hình đăng nhập & bảo mật
+├── gui_admin.py         # Giao diện dành cho Quản trị viên
+├── gui_teacher.py       # Giao diện dành cho Giảng viên
+├── gui_student.py       # Giao diện dành cho Sinh viên
+├── excel_export.py      # Tiện ích xuất dữ liệu báo cáo
+├── import_*.py          # Các công cụ nạp dữ liệu mẫu nhanh
+└── reset_khoa_lop.py    # Script dọn dẹp và khởi tạo lại danh mục
+```
+
+---
+
+## 🛠 Hướng dẫn Cài đặt & Triển khai
+
+### 1. Chuẩn bị môi trường
+- Cài đặt **Python 3.8** hoặc mới hơn.
+- Cài đặt **XAMPP** để chạy MySQL Server.
+
+### 2. Thiết lập Database
+1. Mở XAMPP, Start **Apache** và **MySQL**.
+2. Vào `phpMyAdmin` tạo database tên: `ql_diem_dh`.
+3. **Lưu ý:** Không cần import file SQL thủ công, phần mềm sẽ tự động khởi tạo cấu trúc bảng và dữ liệu mẫu khi chạy lần đầu.
+
+### 3. Cài đặt thư viện
 ```bash
 pip install mysql-connector-python openpyxl
 ```
 
-### Bước 3: Khởi động ứng dụng
+### 4. Khởi chạy
 ```bash
 python main.py
 ```
 
-### Bước 4: Tài khoản đăng nhập mặc định
-(Mật khẩu mặc định đều là `123`)
-- **Admin:** `admin`
-- **Giảng viên:** `GV001`, `GV002`...
-- **Sinh viên:** `20240001`, `20240002`... (Dựa vào dữ liệu bạn đã import)
+---
 
-> **Mẹo:** Chạy các script `import_*.py` để có dữ liệu mẫu ngay lập tức.
+## ⚠️ Giải quyết sự cố thường gặp (Troubleshooting)
+
+- **Lỗi kết nối CSDL:** Kiểm tra xem MySQL trong XAMPP đã Start chưa. Đảm bảo port mặc định là 3306.
+- **Lỗi Font chữ:** Giao diện sử dụng font `Segoe UI`. Nếu bạn dùng Linux/macOS, hãy cài đặt font này hoặc chỉnh sửa trong `gui_styles.py`.
+- **Lỗi xuất Excel:** Đảm bảo file Excel bạn đang định xuất không bị mở bởi một ứng dụng khác.
 
 ---
 
-## 🎨 Thông tin thiết kế UI/UX
-- Ứng dụng can thiệp trực tiếp vào `ttk.Style` và các phương thức vẽ đồ họa của `Canvas` để mang đến diện mạo Material/Flat Design sang trọng.
-- Hỗ trợ thay đổi kích thước cửa sổ (responsive) linh hoạt.
-- Tích hợp các hiệu ứng hover mượt mà cùng bảng màu Pastel/Indigo chủ đạo.
+## 🗺 Lộ trình phát triển (Roadmap)
+- [ ] Tích hợp biểu đồ thống kê bằng `Matplotlib`.
+- [ ] Chế độ tối (Dark Mode) cho giao diện.
+- [ ] Gửi thông báo điểm qua Email cho sinh viên.
+- [ ] Chức năng sao lưu (Backup) database tự động.
+
+---
+
+## 📜 Giấy phép & Tác giả
+- **Tác giả:** [Tên của bạn/Nhóm của bạn]
+- **Học phần:** Kỹ thuật Đồ họa Máy tính - Nhóm 19
+- **Giấy phép:** MIT License - Tự do sử dụng và phát triển thêm.
+
+---
+*Chúc bạn có trải nghiệm tuyệt vời với UniGrade Manager!*

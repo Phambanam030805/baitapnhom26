@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# AI/Tooling
+.sixth/
+.gemini/
+
+# IDEs
+.vscode/
+.idea/
+.project
+.settings/
+
+# OS
+Thumbs.db
+Desktop.ini
