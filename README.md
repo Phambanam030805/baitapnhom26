@@ -4,15 +4,16 @@
 [![Database](https://img.shields.io/badge/database-MySQL-orange.svg)](https://www.mysql.com/)
 [![UI Library](https://img.shields.io/badge/UI-Tkinter%20Custom-green.svg)](https://docs.python.org/3/library/tkinter.html)
 
-**UniGrade Manager** là một giải pháp quản lý đào tạo toàn diện dành cho các trường đại học, được phát triển trên nền tảng Python với tiêu chí: **Trực quan - Bảo mật - Hiệu quả**. Ứng dụng không chỉ đơn thuần là công cụ nhập liệu mà còn là một hệ sinh thái nhỏ kết nối giữa Quản trị viên, Giảng viên và Sinh viên.
+**UniGrade Manager** là một ứng dụng Desktop hoàn thiện được phát triển trong khuôn khổ môn học **Lập trình ứng dụng Python**. Dự án tập trung vào việc áp dụng các nguyên lý lập trình hướng đối tượng (OOP), quản lý cơ sở dữ liệu quan hệ và xây dựng giao diện người dùng (GUI) chuyên nghiệp.
 
 ---
 
-## ✨ Điểm khác biệt so với các phần mềm cơ bản
-Không giống như các bài tập quản lý điểm thông thường sử dụng file Text hay SQLite đơn giản, **UniGrade Manager** được đầu tư kỹ lưỡng về:
-- **Trải nghiệm người dùng (UX):** Giao diện được tinh chỉnh bằng hệ thống Custom Styles, mô phỏng phong cách Material Design hiện đại, mang lại cảm giác chuyên nghiệp thay vì giao diện thô sơ mặc định của Tkinter.
-- **Kiến trúc dữ liệu:** Sử dụng MySQL cho phép xử lý quan hệ phức tạp giữa Sinh viên - Lớp học phần - Điểm số một cách mượt mà và an toàn.
-- **Tính tự động hóa:** Hệ thống tự động tính điểm trung bình, quy đổi điểm chữ (A, B, C, D, F), tính GPA hệ 4 và xếp loại học lực ngay khi giảng viên nhập điểm.
+## ✨ Điểm nổi bật về mặt lập trình
+Thay vì chỉ là một ứng dụng quản lý đơn giản, dự án này được thiết kế để giải quyết các bài toán đặc thù trong lập trình ứng dụng Python:
+- **Kiến trúc Module:** Code được chia tách rõ ràng thành các file logic (Database, UI, Models) giúp dễ dàng bảo trì và mở rộng - một tiêu chuẩn quan trọng trong lập trình ứng dụng.
+- **Xử lý bất đồng bộ & Kết nối:** Quản lý kết nối MySQL bền bỉ, xử lý các lỗi ngoại lệ (Exception Handling) chặt chẽ để ứng dụng không bị "crash" khi gặp sự cố mạng hoặc database.
+- **Tối ưu GUI:** Sử dụng hệ thống `ttk.Style` nâng cao để vượt qua giới hạn giao diện mặc định của Tkinter, kết hợp với xử lý đồ họa trên Canvas.
+- **Lập trình hướng đối tượng (OOP):** Áp dụng triệt để class và phương thức để quản lý trạng thái người dùng và các thực thể dữ liệu.
 
 ---
 
@@ -113,9 +114,6 @@ python main.py
 ---
 
 ## 📜 Giấy phép & Tác giả
-- **Tác giả:** [Tên của bạn/Nhóm của bạn]
-- **Học phần:** Kỹ thuật Đồ họa Máy tính - Nhóm 19
+- **Tác giả:** [Phạm Bá Nam/Nhóm 26: Xây Dựng Phần Mềm Quan Lý Điểm Đại Học]
+- **Học phần:** Lập trình ứng dụng Python
 - **Giấy phép:** MIT License - Tự do sử dụng và phát triển thêm.
-
----
-*Chúc bạn có trải nghiệm tuyệt vời với UniGrade Manager!*
