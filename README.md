@@ -3,117 +3,113 @@
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![Database](https://img.shields.io/badge/database-MySQL-orange.svg)](https://www.mysql.com/)
 [![UI Library](https://img.shields.io/badge/UI-Tkinter%20Custom-green.svg)](https://docs.python.org/3/library/tkinter.html)
+[![Security](https://img.shields.io/badge/Security-SHA--256-red.svg)](https://en.wikipedia.org/wiki/SHA-2)
 
-**UniGrade Manager** là một ứng dụng Desktop hoàn thiện được phát triển trong khuôn khổ môn học **Lập trình ứng dụng Python**. Dự án tập trung vào việc áp dụng các nguyên lý lập trình hướng đối tượng (OOP), quản lý cơ sở dữ liệu quan hệ và xây dựng giao diện người dùng (GUI) chuyên nghiệp.
+**UniGrade Manager** là giải pháp quản trị giáo dục hiện đại, hỗ trợ quản lý điểm số, nhân sự và đào tạo theo hệ thống tín chỉ. Ứng dụng được thiết kế với giao diện Dashboard trực quan, hiệu ứng chuyển động mượt mà và khả năng bảo mật dữ liệu cao.
 
 ---
 
 ## ✨ Điểm nổi bật về mặt lập trình
-Thay vì chỉ là một ứng dụng quản lý đơn giản, dự án này được thiết kế để giải quyết các bài toán đặc thù trong lập trình ứng dụng Python:
-- **Kiến trúc Module:** Code được chia tách rõ ràng thành các file logic (Database, UI, Models) giúp dễ dàng bảo trì và mở rộng - một tiêu chuẩn quan trọng trong lập trình ứng dụng.
-- **Xử lý bất đồng bộ & Kết nối:** Quản lý kết nối MySQL bền bỉ, xử lý các lỗi ngoại lệ (Exception Handling) chặt chẽ để ứng dụng không bị "crash" khi gặp sự cố mạng hoặc database.
-- **Tối ưu GUI:** Sử dụng hệ thống `ttk.Style` nâng cao để vượt qua giới hạn giao diện mặc định của Tkinter, kết hợp với xử lý đồ họa trên Canvas.
-- **Lập trình hướng đối tượng (OOP):** Áp dụng triệt để class và phương thức để quản lý trạng thái người dùng và các thực thể dữ liệu.
 
----
-
-## 🛠 Công nghệ sử dụng (Tech Stack)
-
-| Thành phần | Công nghệ | Chi tiết |
-|---|---|---|
-| **Ngôn ngữ** | Python 3.8+ | Ngôn ngữ lập trình chính |
-| **Giao diện (UI)** | Tkinter + ttk.Style | Tùy biến sâu Canvas & Styles |
-| **Cơ sở dữ liệu** | MySQL (XAMPP) | Quản trị dữ liệu quan hệ |
-| **Xử lý Excel** | OpenPyXL | Xuất báo cáo, bảng điểm chuyên nghiệp |
-| **Bảo mật** | SHA-256 | Mã hóa mật khẩu người dùng |
+- **Giao diện Modern UI:** Tận dụng tối đa sức mạnh của Tkinter Canvas để vẽ Gradient, bo góc (Rounded Corners) và hiệu ứng Animation khi chuyển trang.
+- **Phân quyền đa cấp (RBAC):** Hệ thống phân quyền chặt chẽ giữa 3 vai trò: **Quản trị viên**, **Giảng viên** và **Sinh viên**.
+- **Xử lý dữ liệu thông minh:**
+  - Tự động tính điểm trung bình hệ 10, hệ 4 và quy đổi điểm chữ (A, B, C, D, F).
+  - Thống kê tỷ lệ học tập bằng biểu đồ **Matplotlib** trực quan.
+  - Tìm kiếm và lọc dữ liệu thời gian thực (Instant Search).
+- **Xuất báo cáo chuyên nghiệp:** Tích hợp bộ công cụ xuất file Excel (.xlsx) cho bảng điểm, danh sách sinh viên và nhật ký hệ thống.
+- **Kiến trúc bền vững:** Sử dụng mô hình Module hóa, tách biệt logic nghiệp vụ (`database.py`) và giao diện (`gui_*.py`).
 
 ---
 
 ## 🚀 Tính năng cốt lõi
 
-### 🔑 Hệ thống xác thực & Phân quyền
-- **Đăng nhập đa vai trò:** Tự động nhận diện quyền hạn để hiển thị Dashboard tương ứng.
-- **Bảo mật:** Mật khẩu được băm một chiều, ngăn chặn rò rỉ dữ liệu ngay cả khi lộ database.
-- **Quản lý trạng thái:** Admin có quyền khóa/mở tài khoản linh hoạt.
+### 🔑 Hệ thống xác thực
+- Đăng nhập bảo mật với mật khẩu mã hóa **SHA-256**.
+- Tự động chuyển hướng đến Dashboard theo vai trò người dùng.
+- Quản lý trạng thái tài khoản (Kích hoạt/Khóa).
 
 ### 👤 Module Quản trị viên (Admin)
-- **Quản trị hệ thống:** Quản lý tập trung thông tin Khoa, Lớp hành chính, Môn học và Học kỳ.
-- **Quản lý nhân sự:** Thêm mới/Chỉnh sửa thông tin hàng loạt Sinh viên và Giảng viên.
-- **Thông báo:** Đăng tin tức lên bảng tin chung toàn trường.
-- **Báo cáo:** Xuất danh sách nhân sự ra Excel chỉ với một click.
+- **Quản lý danh mục:** Khoa, Lớp hành chính, Môn học, Học kỳ.
+- **Quản lý nhân sự:** Thêm, sửa, xóa, tìm kiếm Sinh viên và Giảng viên.
+- **Quản lý tài khoản:** Cấp quyền và reset mật khẩu cho người dùng.
+- **Hệ thống bảng tin:** Đăng thông báo quan trọng toàn trường.
+- **Giám sát:** Theo dõi nhật ký hoạt động (Logs) của toàn bộ người dùng.
+- **Bảng vàng:** Vinh danh những sinh viên có thành tích xuất sắc.
 
 ### 👨‍🏫 Module Giảng viên (Teacher)
-- **Quản lý lớp học phần:** Theo dõi danh sách sinh viên trong từng lớp mình phụ trách.
-- **Nhập điểm thông minh:** Giao diện lưới (Treeview) hỗ trợ nhập điểm thành phần. Hệ thống tự động "nhảy" điểm tổng kết và điểm chữ.
-- **Thống kê:** Xem tỷ lệ Đạt/Trượt trực quan.
-- **Báo cáo:** Xuất bảng điểm lớp học phần phục vụ lưu trữ/in ấn.
+- **Quản lý lớp học phần:** Xem danh sách các lớp đang phụ trách.
+- **Nhập điểm chuyên sâu:** Nhập điểm Chuyên cần, Giữa kỳ, Thực hành, Cuối kỳ. Hệ thống tự động tính điểm tổng kết.
+- **Điểm danh:** Theo dõi tình trạng đi học của sinh viên.
+- **Thống kê:** Xem biểu đồ phân loại học lực của lớp học phần.
+- **Báo cáo:** Xuất bảng điểm lớp học phần ra Excel.
 
 ### 🎓 Module Sinh viên (Student)
-- **Đăng ký môn học:** Quy trình đăng ký/hủy lớp học phần trực tuyến đơn giản.
-- **Tra cứu kết quả:** Xem bảng điểm cá nhân chi tiết qua từng kỳ học.
-- **Theo dõi tiến độ:** Tự động tính tổng tín chỉ tích lũy và GPA toàn khóa.
-- **Cá nhân hóa:** Tự xuất bảng điểm cá nhân ra Excel.
+- **Tra cứu kết quả:** Xem bảng điểm chi tiết từng học kỳ và điểm tổng kết toàn khóa.
+- **Theo dõi tiến độ:** Tự động tính số tín chỉ tích lũy và GPA.
+- **Thông báo:** Nhận thông tin mới nhất từ nhà trường và giảng viên.
+- **Tiện ích:** Xuất bảng điểm cá nhân ra file Excel để lưu trữ.
+
+---
+
+## 🛠 Công nghệ sử dụng (Tech Stack)
+
+| Thành phần | Công nghệ |
+|---|---|
+| **Ngôn ngữ** | Python 3.8+ |
+| **Giao diện (UI)** | Tkinter + ttk + Canvas (Custom Style) |
+| **Đồ họa** | Matplotlib (Biểu đồ thống kê) |
+| **Cơ sở dữ liệu** | MySQL (XAMPP) |
+| **Xử lý Excel** | OpenPyXL |
+| **Bảo mật** | Mã hóa SHA-256 |
 
 ---
 
 ## 📂 Cấu trúc dự án
 ```text
 C:\Users\ADMIN\QuanLyDiemDH
-├── main.py              # Điểm khởi đầu của ứng dụng
-├── database.py          # Trái tim của hệ thống (Xử lý SQL & Business Logic)
-├── models.py            # Định nghĩa các lớp đối tượng (POJO style)
-├── gui_styles.py        # Định nghĩa màu sắc, font chữ, styles UI
-├── gui_auth.py          # Màn hình đăng nhập & bảo mật
-├── gui_admin.py         # Giao diện dành cho Quản trị viên
-├── gui_teacher.py       # Giao diện dành cho Giảng viên
-├── gui_student.py       # Giao diện dành cho Sinh viên
-├── excel_export.py      # Tiện ích xuất dữ liệu báo cáo
-├── import_*.py          # Các công cụ nạp dữ liệu mẫu nhanh
-└── reset_khoa_lop.py    # Script dọn dẹp và khởi tạo lại danh mục
+├── main.py              # File chạy chính của ứng dụng
+├── database.py          # Xử lý kết nối và truy vấn CSDL
+├── gui_styles.py        # Định nghĩa Theme, Màu sắc và Styles
+├── gui_auth.py          # Giao diện Đăng nhập & Xác thực
+├── gui_admin.py         # Dashboard cho Quản trị viên
+├── gui_teacher.py       # Dashboard cho Giảng viên
+├── gui_student.py       # Dashboard cho Sinh viên
+├── excel_export.py      # Module xuất dữ liệu ra Excel
+├── models.py            # Định nghĩa các lớp đối tượng dữ liệu
+└── README.md            # Tài liệu hướng dẫn dự án
 ```
 
 ---
 
 ## 🛠 Hướng dẫn Cài đặt & Triển khai
 
-### 1. Chuẩn bị môi trường
-- Cài đặt **Python 3.8** hoặc mới hơn.
-- Cài đặt **XAMPP** để chạy MySQL Server.
+### 1. Chuẩn bị
+- Cài đặt [Python 3.8+](https://www.python.org/).
+- Cài đặt [XAMPP](https://www.apachefriends.org/) để sử dụng MySQL.
 
-### 2. Thiết lập Database
-1. Mở XAMPP, Start **Apache** và **MySQL**.
-2. Vào `phpMyAdmin` tạo database tên: `ql_diem_dh`.
-3. **Lưu ý:** Không cần import file SQL thủ công, phần mềm sẽ tự động khởi tạo cấu trúc bảng và dữ liệu mẫu khi chạy lần đầu.
+### 2. Thiết lập Cơ sở dữ liệu
+- Mở XAMPP Control Panel, khởi động **Apache** và **MySQL**.
+- Truy cập `localhost/phpmyadmin` và tạo database mới với tên: `ql_diem_dh`.
+- *Lưu ý: Ứng dụng sẽ tự động tạo bảng và nạp dữ liệu mẫu trong lần chạy đầu tiên.*
 
-### 3. Cài đặt thư viện
+### 3. Cài đặt thư viện cần thiết
+Mở Terminal/Command Prompt và chạy lệnh:
 ```bash
-pip install mysql-connector-python openpyxl
+pip install mysql-connector-python openpyxl matplotlib
 ```
 
-### 4. Khởi chạy
+### 4. Khởi chạy ứng dụng
 ```bash
 python main.py
 ```
 
 ---
 
-## ⚠️ Giải quyết sự cố thường gặp (Troubleshooting)
+## 📜 Thông tin tác giả
+- **Tác giả:** [Phạm Bá Nam/Nhóm 26]
+- **Dự án:** Phần mềm Quản lý Điểm Hệ Đại học
+- **Giấy phép:** MIT License
 
-- **Lỗi kết nối CSDL:** Kiểm tra xem MySQL trong XAMPP đã Start chưa. Đảm bảo port mặc định là 3306.
-- **Lỗi Font chữ:** Giao diện sử dụng font `Segoe UI`. Nếu bạn dùng Linux/macOS, hãy cài đặt font này hoặc chỉnh sửa trong `gui_styles.py`.
-- **Lỗi xuất Excel:** Đảm bảo file Excel bạn đang định xuất không bị mở bởi một ứng dụng khác.
 
----
 
-## 🗺 Lộ trình phát triển (Roadmap)
-- [ ] Tích hợp biểu đồ thống kê bằng `Matplotlib`.
-- [ ] Chế độ tối (Dark Mode) cho giao diện.
-- [ ] Gửi thông báo điểm qua Email cho sinh viên.
-- [ ] Chức năng sao lưu (Backup) database tự động.
-
----
-
-## 📜 Giấy phép & Tác giả
-- **Tác giả:** [Phạm Bá Nam/Nhóm 26: Xây Dựng Phần Mềm Quan Lý Điểm Đại Học]
-- **Học phần:** Lập trình ứng dụng Python
-- **Giấy phép:** MIT License - Tự do sử dụng và phát triển thêm.

@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from gui_styles import StyleConfig, DashboardBase, StatCard, add_treeview_style, insert_tree_row
+from gui_styles import StyleConfig, DashboardBase, StatCard, add_treeview_style, insert_tree_row, add_search_bar
 import excel_export
 
 
@@ -91,6 +91,9 @@ class AdminDashboard(DashboardBase):
         self.header_icon.config(text=icon)
         self.header_title.config(text=title)
         
+        # Reset scrollable by default
+        self.set_scrollable(True)
+        
         for w in self.content_area.winfo_children(): w.destroy()
         {'DASH': self.page_dashboard, 'PROF': self.page_profile,
          'SV': self.page_sv, 'GV': self.page_gv, 'USR': self.page_users,
@@ -133,63 +136,34 @@ class AdminDashboard(DashboardBase):
         ModernChart.draw_bar_chart(main_dash, "Phân bổ sinh viên theo Khoa", chart_data, color=StyleConfig.INFO)
 
     # ── SINH VIEN ─────────────────────────────────────────────────────────
+
     def page_sv(self):
-        # Search toolbar
-        tb = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=16, pady=10)
-        tb.pack(fill='x', pady=(0, 8))
-        
-        tk.Label(tb, text="Tìm kiếm:", font=StyleConfig.FONT_SM,
-                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
-        ent_search = ttk.Entry(tb, width=22)
-        ent_search.pack(side='left', padx=(6, 16))
-
-        tk.Label(tb, text="Lọc Khoa:", font=StyleConfig.FONT_SM,
-                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
-        cb_filter_kh = ttk.Combobox(tb, width=20, state='readonly')
-        cb_filter_kh.pack(side='left', padx=(6, 0))
-
-        ttk.Button(tb, text="Xuất Excel", style="Success.TButton",
-                   command=lambda: excel_export.export_danh_sach_sv(
-                       self.db.get_all_sinh_vien())).pack(side='right', padx=4)
-
         cols = ('ID','MSV','Họ tên','Ngày sinh','GT','Lớp HC')
         tree = _make_tree(_card(self.content_area, None), cols, [60,110,250,130,70,200])
-        self._sv_all = []
 
         def refresh():
-            self._sv_all = self.db.get_all_sinh_vien()
+            for i in tree.get_children(): tree.delete(i)
+            for r in self.db.get_all_sinh_vien(): insert_tree_row(tree, r[:6])
             lhcs = self.db.get_all_lop_hc()
             self.lhc_map = {r[2]: r[0] for r in lhcs}
             ents[4]['values'] = list(self.lhc_map.keys())
-            
-            # Update Khoa filter
-            khs = self.db.get_all_khoa()
-            cb_filter_kh['values'] = ["Tất cả"] + [k[2] for k in khs]
-            cb_filter_kh.set("Tất cả")
-            
-            _apply_filter()
 
-        def _apply_filter(evt=None):
-            for i in tree.get_children(): tree.delete(i)
-            kw = ent_search.get().strip().lower()
-            kh_sel = cb_filter_kh.get()
-            
-            filtered = []
-            for r in self._sv_all:
-                # r: (id, ma_sv, ho_ten, ns, gt, ten_lop, ten_khoa)
-                match_kw = not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()
-                match_kh = kh_sel == "Tất cả" or r[6] == kh_sel
-                if match_kw and match_kh:
-                    filtered.append(r)
-            
-            for r in filtered: insert_tree_row(tree, r[:6]) # Only show first 6 cols
-            self.set_status(f"Tìm thấy {len(filtered)} sinh viên")
+        # Sử dụng Search Bar mới
+        add_search_bar(self.content_area, tree, refresh)
 
-        ent_search.bind("<KeyRelease>", _apply_filter)
-        cb_filter_kh.bind("<<ComboboxSelected>>", _apply_filter)
+        # Xuất Excel
+        ttk.Button(self.content_area, text="Xuất Excel danh sách SV", style="Success.TButton",
+                   command=lambda: excel_export.export_danh_sach_sv(self.db.get_all_sinh_vien())).pack(pady=5)
 
         def add():
-            if self.db.insert_sinh_vien(ents[0].get(), ents[1].get(), ents[2].get(),
+            # FEAT-06: Validate ngày sinh
+            ns = ents[2].get().strip()
+            if ns:
+                import re
+                if not re.match(r'^\d{2}/\d{2}/\d{4}$', ns):
+                    messagebox.showwarning('Sai định dạng', 'Ngày sinh phải có dạng DD/MM/YYYY\nVí dụ: 01/01/2004')
+                    return
+            if self.db.insert_sinh_vien(ents[0].get(), ents[1].get(), ns,
                                          ents[3].get(), self.lhc_map.get(ents[4].get())):
                 messagebox.showinfo('OK', 'Da them sinh vien (Pass: 123)'); refresh()
             else: messagebox.showerror('Loi', 'Them that bai (trung ma)')
@@ -214,55 +188,21 @@ class AdminDashboard(DashboardBase):
 
     # ── GIANG VIEN ─────────────────────────────────────────────────────────
     def page_gv(self):
-        # Search toolbar
-        tb = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=16, pady=10)
-        tb.pack(fill='x', pady=(0, 8))
-        tk.Label(tb, text="Tìm kiếm:", font=StyleConfig.FONT_SM,
-                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
-        ent_search = ttk.Entry(tb, width=22)
-        ent_search.pack(side='left', padx=(6, 16))
-
-        tk.Label(tb, text="Lọc Khoa:", font=StyleConfig.FONT_SM,
-                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left')
-        cb_filter_kh = ttk.Combobox(tb, width=20, state='readonly')
-        cb_filter_kh.pack(side='left', padx=(6, 0))
-
-        ttk.Button(tb, text="Xuất Excel", style="Success.TButton",
-                   command=lambda: excel_export.export_danh_sach_gv(
-                       self.db.get_all_giang_vien())).pack(side='right', padx=4)
-
         cols = ('ID','Mã GV','Họ tên','Khoa','Email','SĐT')
         tree = _make_tree(_card(self.content_area, None), cols, [60,110,230,180,200,130])
-        self._gv_all = []
-
         def refresh():
-            self._gv_all = self.db.get_all_giang_vien()
-            
-            # Update Khoa filter
-            khs = self.db.get_all_khoa()
-            cb_filter_kh['values'] = ["Tất cả"] + [k[2] for k in khs]
-            cb_filter_kh.set("Tất cả")
-            
-            _apply_filter()
-
-        def _apply_filter(evt=None):
             for i in tree.get_children(): tree.delete(i)
-            kw = ent_search.get().strip().lower()
-            kh_sel = cb_filter_kh.get()
-            
-            filtered = []
-            for r in self._gv_all:
-                match_kw = not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()
-                match_kh = kh_sel == "Tất cả" or r[3] == kh_sel
-                if match_kw and match_kh:
-                    filtered.append(r)
-            for r in filtered: insert_tree_row(tree, r)
-            self.set_status(f"Tìm thấy {len(filtered)} giảng viên")
+            for r in self.db.get_all_giang_vien(): insert_tree_row(tree, r)
 
-        ent_search.bind("<KeyRelease>", _apply_filter)
-        cb_filter_kh.bind("<<ComboboxSelected>>", _apply_filter)
+        # Sử dụng Search Bar mới
+        add_search_bar(self.content_area, tree, refresh)
+
+        # Xuất Excel
+        ttk.Button(self.content_area, text="Xuất Excel danh sách GV", style="Success.TButton",
+                   command=lambda: excel_export.export_danh_sach_gv(self.db.get_all_giang_vien())).pack(pady=5)
 
         def add():
+
             if self.db.insert_giang_vien(ents[0].get(), ents[1].get(), ents[2].get(), ents[3].get(), ents[4].get()):
                 messagebox.showinfo('OK', 'Da them giang vien (Pass: 123)'); refresh()
             else: messagebox.showerror('Loi', 'Them that bai')
@@ -295,6 +235,8 @@ class AdminDashboard(DashboardBase):
                 tag = 'odd' if len(tree.get_children()) % 2 else 'even'
                 status = '✅ Hoạt động' if r[3] == 1 else '🔒 Đã khóa'
                 tree.insert('', 'end', values=(r[0], r[1], r[2], status), tags=(tag,))
+
+        add_search_bar(self.content_area, tree, refresh)
 
         ctrl = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=20, pady=14)
         ctrl.pack(fill='x', pady=(0, 12))
@@ -382,6 +324,9 @@ class AdminDashboard(DashboardBase):
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_all_khoa(): insert_tree_row(tree, r)
+        
+        add_search_bar(self.content_area, tree, refresh)
+
         def add():
             if self.db.insert_khoa(ents[0].get(), ents[1].get()):
                 messagebox.showinfo('OK','✅ Thêm thành công'); refresh()
@@ -410,6 +355,9 @@ class AdminDashboard(DashboardBase):
             khs = self.db.get_all_khoa()
             self.kh_map = {r[2]: r[0] for r in khs}
             ents[2]['values'] = list(self.kh_map.keys())
+        
+        add_search_bar(self.content_area, tree, refresh)
+
         def add():
             if self.db.insert_lop_hc(ents[0].get(), ents[1].get(), self.kh_map.get(ents[2].get())):
                 messagebox.showinfo('OK','✅ Thêm thành công'); refresh()
@@ -430,16 +378,20 @@ class AdminDashboard(DashboardBase):
 
     # ── MÔN HỌC ────────────────────────────────────────────────────────────
     def page_mh(self):
-        cols = ('ID','Mã MH','Tên Môn','Số TC')
-        tree = _make_tree(_card(self.content_area, None), cols, [60,130,360,100])
+        cols = ('ID','Mã MH','Tên môn','Số TC','Mô tả')
+        tree = _make_tree(_card(self.content_area, None), cols, [60,110,280,70,250])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
-            for r in self.db.get_all_mon_hoc(): insert_tree_row(tree, r[:4])
+            for r in self.db.get_all_mon_hoc(): insert_tree_row(tree, r)
+
+        add_search_bar(self.content_area, tree, refresh)
+
         def add():
+
             try:
                 if self.db.insert_mon_hoc(ents[0].get(), ents[1].get(), int(ents[2].get() or 0)):
                     messagebox.showinfo('OK','✅ Thêm thành công'); refresh()
-            except: messagebox.showerror('Lỗi','Số tín chỉ phải là số nguyên')
+            except Exception: messagebox.showerror('Lỗi','Số tín chỉ phải là số nguyên')
         def edit():
             sel = tree.selection()
             if sel:
@@ -447,7 +399,7 @@ class AdminDashboard(DashboardBase):
                     if self.db.update_mon_hoc(tree.item(sel[0])['values'][0],
                             ents[0].get(), ents[1].get(), int(ents[2].get() or 0), ''):
                         messagebox.showinfo('OK','✅ Cập nhật'); refresh()
-                except: messagebox.showerror('Lỗi','Số tín chỉ phải là số')
+                except Exception: messagebox.showerror('Lỗi','Số tín chỉ phải là số')
         def delete():
             sel = tree.selection()
             if sel and messagebox.askyesno('Xác nhận','Xóa môn học?'):
@@ -473,6 +425,8 @@ class AdminDashboard(DashboardBase):
             ents[3]['values'] = list(self.hk_map.keys())
             ents[4]['values'] = ['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật']
             ents[5]['values'] = ['1 (7h-9h)','2 (9h-11h)','3 (13h-15h)','4 (15h-17h)','5 (18h-20h)']
+
+        add_search_bar(self.content_area, tree, refresh)
 
         def on_sel(evt):
             sel = tree.selection()
@@ -525,32 +479,103 @@ class AdminDashboard(DashboardBase):
 
     # ── HỌC KỲ ─────────────────────────────────────────────────────────────
     def page_hk(self):
-        cols = ('ID','Tên Kỳ','Năm học')
-        tree = _make_tree(_card(self.content_area, None), cols, [60,280,200])
+        cols = ('ID','Tên Kỳ','Năm học','Trạng thái')
+        tree = _make_tree(_card(self.content_area, None), cols, [60,240,160,140])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
-            for r in self.db.get_all_hoc_ky(): insert_tree_row(tree, r[:3])
-        def add(): self.db.insert_hoc_ky(ents[0].get(), ents[1].get()); refresh()
+            for r in self.db.get_all_hoc_ky():
+                tag = 'odd' if len(tree.get_children()) % 2 else 'even'
+                status = '🟢 Đang mở' if r[3] == 'mo' else '🔴 Đã đóng'
+                tree.insert('', 'end', values=(r[0], r[1], r[2], status), tags=(tag,))
+
+        add_search_bar(self.content_area, tree, refresh)
+
+        def add():
+            if self.db.insert_hoc_ky(ents[0].get(), ents[1].get()):
+                messagebox.showinfo('OK','✅ Thêm học kỳ thành công'); refresh()
+            else: messagebox.showerror('Lỗi','Thêm thất bại')
+        def edit():
+            sel = tree.selection()
+            if sel:
+                if self.db.update_hoc_ky(tree.item(sel[0])['values'][0], ents[0].get(), ents[1].get()):
+                    messagebox.showinfo('OK','✅ Cập nhật thành công'); refresh()
+                else: messagebox.showerror('Lỗi','Cập nhật thất bại')
+        def delete():
+            sel = tree.selection()
+            if sel and messagebox.askyesno('Xác nhận','Xóa học kỳ này?'):
+                ok, msg = self.db.delete_hoc_ky(tree.item(sel[0])['values'][0])
+                if ok: refresh()
+                else: messagebox.showwarning('Cảnh báo', msg)
         ents = _form_card(self.content_area, [('Tên kỳ',18,0),('Năm học',16,0)],
-                          add, lambda: None, lambda: None, tree)
+                          add, edit, delete, tree)
+
+        # Nút đổi trạng thái
+        ctrl_f = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=24, pady=10)
+        ctrl_f.pack(fill='x', pady=(0, 8))
+        def toggle_status():
+            sel = tree.selection()
+            if not sel: messagebox.showwarning('Chưa chọn','Vui lòng chọn học kỳ!'); return
+            hk_id = tree.item(sel[0])['values'][0]
+            if self.db.toggle_hoc_ky_status(hk_id):
+                self.set_status('✅ Đã thay đổi trạng thái học kỳ', ok=True)
+                refresh()
+        ttk.Button(ctrl_f, text='🔄 Mở/Đóng học kỳ', style='Warning.TButton', command=toggle_status).pack(side='left', padx=4)
+        tk.Label(ctrl_f, text='💡 Chỉ lớp thuộc học kỳ "Đang mở" mới hiển thị cho SV đăng ký',
+                 font=StyleConfig.FONT_XS, fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='left', padx=16)
         refresh()
 
     # ── THÔNG BÁO ──────────────────────────────────────────────────────────
     def page_tb(self):
-        cols = ('ID','Tiêu đề','Ngày đăng','Người đăng')
-        tree = _make_tree(_card(self.content_area, None), cols, [60,420,160,150])
+        cols = ('ID','Tiêu đề','Nội dung','Ngày đăng','Người đăng')
+        tree = _make_tree(_card(self.content_area, None), cols, [50,240,280,150,140])
         def refresh():
             for i in tree.get_children(): tree.delete(i)
-            for r in self.db.get_all_thong_bao(): insert_tree_row(tree, (r[0],r[1],r[3],r[4]))
+            for r in self.db.get_all_thong_bao(): insert_tree_row(tree, r)
+
+        add_search_bar(self.content_area, tree, refresh)
+
+        # Form nhập thông báo
+        form_card = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=24, pady=14)
+        form_card.pack(fill='x', pady=(0, 10))
+
+        form = tk.Frame(form_card, bg=StyleConfig.CARD_BG)
+        form.pack(fill='x')
+
+        tk.Label(form, text='Tiêu đề', font=StyleConfig.FONT_SM,
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).grid(row=0, column=0, padx=8, sticky='w')
+        ent_title = ttk.Entry(form, width=40)
+        ent_title.grid(row=1, column=0, padx=8, pady=5, sticky='ew')
+
+        tk.Label(form, text='Nội dung chi tiết', font=StyleConfig.FONT_SM,
+                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).grid(row=0, column=1, padx=8, sticky='w')
+        ent_content = ttk.Entry(form, width=60)
+        ent_content.grid(row=1, column=1, padx=8, pady=5, sticky='ew')
+
+        def on_sel(evt):
+            sel = tree.selection()
+            if not sel: return
+            vals = tree.item(sel[0])['values']
+            ent_title.delete(0, tk.END); ent_title.insert(0, vals[1])
+            ent_content.delete(0, tk.END); ent_content.insert(0, vals[2] if len(vals) > 2 else '')
+        tree.bind('<<TreeviewSelect>>', on_sel)
+
+        bf = tk.Frame(form_card, bg=StyleConfig.CARD_BG)
+        bf.pack(fill='x', pady=(12, 0))
+
         def add():
-            t = ents[0].get().strip()
+            t = ent_title.get().strip()
+            c = ent_content.get().strip()
             if not t: messagebox.showwarning('Thiếu','Nhập tiêu đề!'); return
-            self.db.insert_thong_bao(t, '(Nội dung...)', self.user_data[1]); refresh()
+            if not c: c = '(Không có nội dung)'
+            self.db.insert_thong_bao(t, c, self.user_data[1]); refresh()
+            ent_title.delete(0, tk.END); ent_content.delete(0, tk.END)
         def delete():
             sel = tree.selection()
             if sel and messagebox.askyesno('Xác nhận','Xóa thông báo này?'):
                 self.db.delete_thong_bao(tree.item(sel[0])['values'][0]); refresh()
-        ents = _form_card(self.content_area, [('Tiêu đề',60,0)], add, lambda: None, delete, tree)
+
+        ttk.Button(bf, text='＋ Đăng thông báo', style='Primary.TButton', command=add).pack(side='left', padx=4)
+        ttk.Button(bf, text='✕ Xóa', style='Danger.TButton', command=delete).pack(side='left', padx=4)
         refresh()
 
     # ── NHẬT KÝ ────────────────────────────────────────────────────────────
@@ -560,6 +585,8 @@ class AdminDashboard(DashboardBase):
         def refresh():
             for i in tree.get_children(): tree.delete(i)
             for r in self.db.get_nhat_ky(): insert_tree_row(tree, r)
+        
+        add_search_bar(self.content_area, tree, refresh)
         refresh()
 
     # ── BẢNG VÀNG ──────────────────────────────────────────────────────────
@@ -573,5 +600,10 @@ class AdminDashboard(DashboardBase):
         card = _card(self.content_area, "Top 20 sinh viên có GPA cao nhất hệ thống")
         cols = ('MSV','Họ tên','GPA Tích lũy')
         tree = _make_tree(card, cols, [150,320,180])
-        for r in self.db.get_top_sinh_vien(20):
-            insert_tree_row(tree, r)
+        
+        def refresh():
+            for i in tree.get_children(): tree.delete(i)
+            for r in self.db.get_top_sinh_vien(20): insert_tree_row(tree, r)
+
+        add_search_bar(self.content_area, tree, refresh)
+        refresh()

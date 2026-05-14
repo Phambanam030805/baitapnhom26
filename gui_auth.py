@@ -37,24 +37,18 @@ class LoginWindow:
         canvas.place(x=0, y=0)
         StyleConfig.draw_gradient(canvas, left_w, self.H, "#4f46e5", "#06b6d4")
 
-        # Decorative circles on canvas (semi-transparent via stipple)
-        canvas.create_oval(-60, -60, 220, 220,
-                           fill="#7c6fe8", outline="", stipple="gray25")
-        canvas.create_oval(left_w-180, self.H-180, left_w+80, self.H+80,
-                           fill="#3ab8c8", outline="", stipple="gray25")
-        canvas.create_oval(left_w//2-90, self.H//2-90,
-                           left_w//2+90, self.H//2+90,
-                           fill="#6366f1", outline="", stipple="gray12")
+        # Decorative circles on canvas (Using solid colors with lighter shades for a modern feel)
+        canvas.create_oval(-80, -80, 240, 240, fill="#6366f1", outline="")
+        canvas.create_oval(left_w-150, self.H-150, left_w+100, self.H+100, fill="#06b6d4", outline="")
+        canvas.create_oval(left_w//2-110, self.H//2-110, left_w//2+110, self.H//2+110, 
+                           fill="", outline="white", width=1) # Outer outline circle
 
         # Left text content
-        canvas.create_text(left_w//2, self.H//2 - 90,
-                           text="🎓", font=("Segoe UI", 56), fill="white")
-        canvas.create_text(left_w//2, self.H//2,
-                           text="QUẢN LÝ ĐIỂM ĐẠI HỌC",
-                           font=("Segoe UI", 22, "bold"), fill="white")
-        canvas.create_text(left_w//2, self.H//2 + 44,
-                           text="Phần mềm Quản lý điểm hệ Đại học",
-                           font=("Segoe UI", 12), fill="#dde8ff")
+        canvas.create_text(left_w//2, self.H//2 - 110, text="🎓", font=("Segoe UI", 64), fill="white")
+        canvas.create_text(left_w//2, self.H//2 - 20, text="QUẢN LÝ ĐIỂM ĐẠI HỌC",
+                           font=("Segoe UI", 24, "bold"), fill="white")
+        canvas.create_text(left_w//2, self.H//2 + 30, text="Nền tảng Quản trị Giáo dục Thông minh",
+                           font=("Segoe UI", 13), fill="#dde8ff")
         
 
         # Feature bullets
@@ -74,20 +68,21 @@ class LoginWindow:
         right.place(x=left_w, y=0, width=right_w, height=self.H)
 
         # ── Login card ────────────────────────────────────────────────────
-        card = tk.Frame(right, bg=StyleConfig.CARD_BG)
-        card.place(relx=0.5, rely=0.5, anchor='center')
+        self.card = tk.Frame(right, bg=StyleConfig.CARD_BG)
+        self.card_y = 0.52
+        self.card.place(relx=0.5, rely=self.card_y, anchor='center')
 
         # Header
-        tk.Label(card, text="Chào mừng trở lại!",
+        tk.Label(self.card, text="Chào mừng trở lại!",
                  font=("Segoe UI", 20, "bold"),
                  fg=StyleConfig.TEXT_DARK, bg=StyleConfig.CARD_BG).pack(anchor='w')
-        tk.Label(card, text="Đăng nhập vào tài khoản",
+        tk.Label(self.card, text="Đăng nhập vào tài khoản",
                  font=StyleConfig.FONT_SM, fg=StyleConfig.TEXT_GRAY,
                  bg=StyleConfig.CARD_BG).pack(anchor='w', pady=(2, 28))
 
         # ── Username field ────────────────────────────────────────────────
-        self._field_label(card, "👤  Tên đăng nhập")
-        u_wrap = tk.Frame(card, bg=StyleConfig.BORDER, padx=1, pady=1)
+        self._field_label(self.card, "👤  Tên đăng nhập")
+        u_wrap = tk.Frame(self.card, bg=StyleConfig.BORDER, padx=1, pady=1)
         u_wrap.pack(fill='x', pady=(4, 18))
         u_inner = tk.Frame(u_wrap, bg=StyleConfig.CARD_BG)
         u_inner.pack(fill='x')
@@ -95,12 +90,12 @@ class LoginWindow:
                               bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK,
                               relief='flat', bd=6, width=26)
         self.ent_u.pack(fill='x')
-        self.ent_u.insert(0, "admin")
+        self.ent_u.focus_set()
         self._add_focus_highlight(u_wrap, self.ent_u)
 
         # ── Password field ────────────────────────────────────────────────
-        self._field_label(card, "🔒  Mật khẩu")
-        p_wrap = tk.Frame(card, bg=StyleConfig.BORDER, padx=1, pady=1)
+        self._field_label(self.card, "🔒  Mật khẩu")
+        p_wrap = tk.Frame(self.card, bg=StyleConfig.BORDER, padx=1, pady=1)
         p_wrap.pack(fill='x', pady=(4, 28))
         p_inner = tk.Frame(p_wrap, bg=StyleConfig.CARD_BG)
         p_inner.pack(fill='x')
@@ -109,11 +104,10 @@ class LoginWindow:
                               bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK,
                               relief='flat', bd=6, width=26)
         self.ent_p.pack(fill='x')
-        self.ent_p.insert(0, "123")
         self._add_focus_highlight(p_wrap, self.ent_p)
 
         # ── Login button ──────────────────────────────────────────────────
-        self.btn = tk.Button(card, text="ĐĂNG NHẬP  →",
+        self.btn = tk.Button(self.card, text="ĐĂNG NHẬP  →",
                              font=("Segoe UI", 11, "bold"),
                              bg=StyleConfig.PRIMARY, fg="white",
                              relief='flat', bd=0, cursor='hand2',
@@ -127,9 +121,20 @@ class LoginWindow:
         self.root.bind("<Return>", lambda e: self.login())
 
         # Footer note
-        tk.Label(card, text="Quên mật khẩu? Liên hệ quản trị viên",
+        tk.Label(self.card, text="Quên mật khẩu? Liên hệ quản trị viên",
                  font=StyleConfig.FONT_XS, fg=StyleConfig.TEXT_LIGHT,
                  bg=StyleConfig.CARD_BG).pack(pady=(16, 0))
+        
+        # Start animation
+        self._animate_entrance()
+
+    def _animate_entrance(self):
+        if self.card_y > 0.5:
+            self.card_y -= 0.001
+            self.card.place(relx=0.5, rely=self.card_y, anchor='center')
+            self.root.after(10, self._animate_entrance)
+        else:
+            self.card.place(relx=0.5, rely=0.5, anchor='center')
 
     # ── Helpers ────────────────────────────────────────────────────────────
     def _field_label(self, parent, text):

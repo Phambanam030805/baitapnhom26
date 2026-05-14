@@ -10,7 +10,16 @@ class AppController:
     def __init__(self):
         self.root = tk.Tk()
         self.db = Database()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.show_login()
+
+    def _on_close(self):
+        """Đóng kết nối DB trước khi thoát ứng dụng."""
+        try:
+            self.db.conn.close()
+        except Exception:
+            pass
+        self.root.destroy()
 
     def show_login(self):
         for w in self.root.winfo_children(): w.destroy()

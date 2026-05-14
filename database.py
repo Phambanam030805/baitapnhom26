@@ -17,10 +17,12 @@ class Database:
             raise e
 
     def _ping(self):
-        """Bug #2: Tu dong ket noi lai neu MySQL da dong connection (sau 8h idle)."""
+        """Tu dong ket noi lai neu MySQL da dong connection (sau 8h idle)."""
         try:
             self.conn.ping(reconnect=True, attempts=3, delay=2)
-        except:
+            # Recreate cursor sau khi reconnect de tranh stale cursor
+            self.cursor = self.conn.cursor(buffered=True)
+        except Exception:
             try:
                 self.conn = mysql.connector.connect(**self._db_cfg)
                 self.cursor = self.conn.cursor(buffered=True)
@@ -168,6 +170,9 @@ class Database:
             # Thêm si_so_toi_da cho lop_hoc_phan
             ("lop_hoc_phan", "si_so_toi_da",
              "ALTER TABLE lop_hoc_phan ADD COLUMN si_so_toi_da INT DEFAULT NULL"),
+            # Thêm ngay_dang_ky cho dang_ky_lop
+            ("dang_ky_lop", "ngay_dang_ky",
+             "ALTER TABLE dang_ky_lop ADD COLUMN ngay_dang_ky DATE DEFAULT NULL"),
         ]
         for table, column, sql in migrations:
             try:
@@ -225,6 +230,10 @@ class Database:
                     self.insert_sinh_vien("2024001", "Tran Van B", "01/01/2004", "Nam", lhc_id)
                     self.insert_sinh_vien("2024002", "Le Thi C", "15/05/2004", "Nu", lhc_id)
                 
+                # 5. Thong bao mau
+                self.insert_thong_bao("Chào mừng đến với UniGrade Manager!", 
+                                      "Hệ thống quản lý điểm phiên bản 1.0 đã chính thức đi vào hoạt động.", "Hệ thống")
+
                 print("[System] Da nap du lieu mau thanh cong!")
         except Exception as e:
             print(f"[Seed Error] {e}")
@@ -480,15 +489,39 @@ class Database:
 
     # --- HỌC KỲ ---
     def insert_hoc_ky(self, ten, nam):
-        self.cursor.execute("INSERT INTO hoc_ky (ten_hoc_ky, nam_hoc) VALUES (%s, %s)", (ten, nam))
-        self.conn.commit()
+        try:
+            self.cursor.execute("INSERT INTO hoc_ky (ten_hoc_ky, nam_hoc) VALUES (%s, %s)", (ten, nam))
+            self.conn.commit(); return True
+        except Exception as e:
+            print(f"[insert_hoc_ky] {e}"); return False
 
     def get_all_hoc_ky(self):
         self.cursor.execute("SELECT * FROM hoc_ky"); return self.cursor.fetchall()
 
+    def update_hoc_ky(self, id_h, ten, nam):
+        try:
+            self.cursor.execute("UPDATE hoc_ky SET ten_hoc_ky=%s, nam_hoc=%s WHERE id=%s", (ten, nam, id_h))
+            self.conn.commit(); return True
+        except Exception as e:
+            print(f"[update_hoc_ky] {e}"); return False
+
     def delete_hoc_ky(self, id_h):
+        self.cursor.execute("SELECT 1 FROM lop_hoc_phan WHERE id_hoc_ky=%s", (id_h,))
+        if self.cursor.fetchone(): return False, "Đang có lớp học phần thuộc học kỳ này!"
         self.cursor.execute("DELETE FROM hoc_ky WHERE id=%s", (id_h,))
-        self.conn.commit(); return True
+        self.conn.commit(); return True, "Xóa thành công"
+
+    def toggle_hoc_ky_status(self, id_h):
+        """Chuyển đổi trạng thái học kỳ giữa 'mo' và 'dong'."""
+        try:
+            self.cursor.execute("SELECT trang_thai FROM hoc_ky WHERE id=%s", (id_h,))
+            row = self.cursor.fetchone()
+            if not row: return False
+            new_status = 'dong' if row[0] == 'mo' else 'mo'
+            self.cursor.execute("UPDATE hoc_ky SET trang_thai=%s WHERE id=%s", (new_status, id_h))
+            self.conn.commit(); return True
+        except Exception as e:
+            print(f"[toggle_hoc_ky] {e}"); return False
 
     # --- ĐIỂM & ĐĂNG KÝ ---
     def check_schedule_conflict(self, id_sv, id_lhp):
@@ -526,7 +559,7 @@ class Database:
             return False, str(e)
 
     def dang_ky_sinh_vien_vao_lop(self, id_lop, id_sv):
-        """Fix Bug: Kiem tra id_sv truoc khi insert de tranh loi FK/Null."""
+        """Kiem tra id_sv truoc khi insert de tranh loi FK/Null."""
         if not id_sv:
             return False, "Tài khoản của bạn chưa được liên kết với hồ sơ sinh viên!"
             
@@ -545,6 +578,56 @@ class Database:
             self.conn.rollback()
             print(f"[dang_ky] {e}")
             return False, f"Lỗi hệ thống: {str(e)}"
+
+    def huy_dang_ky_lop(self, id_lop, id_sv):
+        """Huy dang ky lop hoc phan. Chi cho phep khi lop van mo va chua co diem."""
+        if not id_sv:
+            return False, "Tài khoản chưa liên kết hồ sơ sinh viên!"
+        self._ping()
+        try:
+            # Kiem tra lop con mo khong
+            self.cursor.execute("SELECT status FROM lop_hoc_phan WHERE id=%s", (id_lop,))
+            lhp = self.cursor.fetchone()
+            if not lhp: return False, "Không tìm thấy lớp học phần!"
+            if lhp[0] == 'closed': return False, "Lớp đã khóa, không thể hủy đăng ký!"
+
+            # Kiem tra da co diem chua
+            self.cursor.execute("SELECT diem_cc, diem_gk, diem_ck FROM diem WHERE id_sinh_vien=%s AND id_lop_hp=%s", (id_sv, id_lop))
+            diem_row = self.cursor.fetchone()
+            if diem_row and any(d is not None for d in diem_row):
+                return False, "Bạn đã có điểm, không thể hủy đăng ký!"
+
+            # Xoa diem danh
+            self.cursor.execute("DELETE FROM diem_danh WHERE id_sinh_vien=%s AND id_lop_hp=%s", (id_sv, id_lop))
+            # Xoa diem
+            self.cursor.execute("DELETE FROM diem WHERE id_sinh_vien=%s AND id_lop_hp=%s", (id_sv, id_lop))
+            # Xoa dang ky
+            self.cursor.execute("DELETE FROM dang_ky_lop WHERE id_lop_hp=%s AND id_sinh_vien=%s", (id_lop, id_sv))
+            self.conn.commit()
+            return True, "Đã hủy đăng ký thành công!"
+        except Exception as e:
+            self.conn.rollback()
+            print(f"[huy_dang_ky] {e}")
+            return False, f"Lỗi hệ thống: {str(e)}"
+
+    def get_registered_classes(self, id_sv):
+        """Lay danh sach lop hoc phan da dang ky cua sinh vien."""
+        self._ping()
+        query = """
+            SELECT l.id, l.ma_lop_hp, m.ten_mh, g.ho_ten,
+                   CONCAT(l.thu, ' (Ca ', l.ca_hoc, ')'),
+                   CONCAT(h.ten_hoc_ky, ' ', h.nam_hoc),
+                   l.status
+            FROM dang_ky_lop dk
+            JOIN lop_hoc_phan l ON dk.id_lop_hp = l.id
+            JOIN mon_hoc m ON l.id_mon_hoc = m.id
+            JOIN giang_vien g ON l.id_giang_vien = g.id
+            JOIN hoc_ky h ON l.id_hoc_ky = h.id
+            WHERE dk.id_sinh_vien = %s
+            ORDER BY h.nam_hoc DESC, h.ten_hoc_ky DESC
+        """
+        self.cursor.execute(query, (id_sv,))
+        return self.cursor.fetchall()
 
     def update_diem(self, id_sv, id_lop, d_cc, d_gk, d_ck, user_id):
         self._ping()
@@ -609,6 +692,7 @@ class Database:
     
     def get_thong_ke_lop(self, id_lop):
         """Thống kê phổ điểm của một lớp học phần."""
+        self._ping()
         query = """
             SELECT diem_chu, COUNT(*) 
             FROM diem 
@@ -622,14 +706,13 @@ class Database:
     def get_ds_cam_thi(self, id_lop):
         """Lấy danh sách sinh viên bị cấm thi trong lớp."""
         query = """
-            SELECT s.ma_sv, s.ho_ten, d.diem_cc, d.trang_thai 
-            FROM diem d 
-            JOIN sinh_vien s ON d.id_sinh_vien=s.id 
-            WHERE d.id_lop_hp=%s AND d.trang_thai = 'Cấm thi'
+            SELECT s.ma_sv, s.ho_ten, d.diem_cc, d.trang_thai
+            FROM diem d
+            JOIN sinh_vien s ON d.id_sinh_vien=s.id
+            WHERE d.id_lop_hp=%s AND d.trang_thai = 'Cam thi'
         """
         self.cursor.execute(query, (id_lop,))
         return self.cursor.fetchall()
-
     def get_tien_do_sinh_vien(self, id_sv):
         """Thống kê số tín chỉ tích lũy của sinh viên."""
         query = """
@@ -825,13 +908,20 @@ class Database:
             res = self.cursor.fetchone()
             tong_so_buoi = (res[0] * 5) if res and res[0] else 15
             
-            # Đếm số buổi nghỉ KHÔNG PHÉP (status=0)
+            # Lấy TẤT CẢ sinh viên đăng ký lớp, không chỉ những SV có vắng
+            self.cursor.execute("SELECT id_sinh_vien FROM dang_ky_lop WHERE id_lop_hp=%s", (id_lhp,))
+            all_sv = [r[0] for r in self.cursor.fetchall()]
+            
+            # Đếm số buổi nghỉ KHÔNG PHÉP (status=0) cho từng SV
             self.cursor.execute("SELECT id_sinh_vien, COUNT(*) as nghi FROM diem_danh WHERE id_lop_hp=%s AND trang_thai=0 GROUP BY id_sinh_vien", (id_lhp,))
-            stats = self.cursor.fetchall()
-            for id_sv, nghi in stats:
+            nghi_map = dict(self.cursor.fetchall())
+            
+            for id_sv in all_sv:
+                nghi = nghi_map.get(id_sv, 0)
                 if nghi / tong_so_buoi > 0.2:
                     self.cursor.execute("UPDATE diem SET trang_thai='Cam thi' WHERE id_sinh_vien=%s AND id_lop_hp=%s", (id_sv, id_lhp))
                 else:
+                    # Gỡ cấm thi nếu trước đó bị cấm nhưng giờ đã hợp lệ
                     self.cursor.execute("SELECT trang_thai FROM diem WHERE id_sinh_vien=%s AND id_lop_hp=%s", (id_sv, id_lhp))
                     curr = self.cursor.fetchone()
                     if curr and curr[0] == 'Cam thi':
@@ -844,6 +934,7 @@ class Database:
 
     def get_attendance_report(self, id_lhp):
         # Lấy số tín chỉ để tính tổng số buổi chuẩn
+        self._ping()
         self.cursor.execute("SELECT m.so_tin_chi FROM lop_hoc_phan l JOIN mon_hoc m ON l.id_mon_hoc = m.id WHERE l.id = %s", (id_lhp,))
         res = self.cursor.fetchone()
         tong_so_buoi = (res[0] * 5) if res and res[0] else 15
@@ -871,6 +962,7 @@ class Database:
 
     def get_student_attendance_summary(self, sv_id):
         """Lấy tóm tắt điểm danh của sinh viên ở tất cả các môn đang học."""
+        self._ping()
         query = """
             SELECT m.ma_mh, m.ten_mh, m.so_tin_chi,
                    COUNT(CASE WHEN dd.trang_thai=0 THEN 1 END) as nghi_k,
@@ -889,6 +981,7 @@ class Database:
 
     def get_student_attendance_detail(self, sv_id, lhp_id):
         """Lấy chi tiết từng buổi điểm danh của sinh viên trong một lớp cụ thể."""
+        self._ping()
         query = """
             SELECT ngay, trang_thai
             FROM diem_danh

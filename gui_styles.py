@@ -154,6 +154,7 @@ class ScrollableFrame(tk.Frame):
     """Một Frame có khả năng cuộn nội dung bên trong, tự động ẩn thanh cuộn khi không cần."""
     def __init__(self, container, *args, **kwargs):
         super().__init__(container, *args, **kwargs)
+        self.scroll_enabled = True # Flag để kiểm soát việc cho phép cuộn hay không
         self.canvas = tk.Canvas(self, bg=kwargs.get('bg', StyleConfig.CONTENT_BG), highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas, bg=kwargs.get('bg', StyleConfig.CONTENT_BG))
@@ -187,7 +188,12 @@ class ScrollableFrame(tk.Frame):
         self._check_scrollbar()
 
     def _check_scrollbar(self):
-        """Ẩn thanh cuộn nếu nội dung vừa khít màn hình."""
+        """Ẩn thanh cuộn nếu nội dung vừa khít màn hình hoặc khi bị vô hiệu hóa."""
+        if not self.scroll_enabled:
+            if self.scrollbar.winfo_ismapped():
+                self.scrollbar.pack_forget()
+            return
+
         self.update_idletasks()
         content_h = self.scrollable_frame.winfo_reqheight()
         canvas_h = self.canvas.winfo_height()
@@ -200,7 +206,7 @@ class ScrollableFrame(tk.Frame):
                 self.scrollbar.pack(side="right", fill="y")
 
     def _on_mousewheel(self, event):
-        if self.scrollbar.winfo_ismapped():
+        if self.scroll_enabled and self.scrollbar.winfo_ismapped():
             self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
 
@@ -511,6 +517,16 @@ class DashboardBase:
         color = StyleConfig.SUCCESS if ok else StyleConfig.DANGER
         self.status_lbl.config(text=f"● {text}", fg=color)
 
+    def set_scrollable(self, status=True):
+        """Bật hoặc tắt thanh cuộn chính của toàn trang."""
+        self._container.scroll_enabled = status
+        if status:
+            self._container._check_scrollbar()
+            self._container._bind_mousewheel(self._container.canvas)
+        else:
+            self._container.scrollbar.pack_forget()
+            self._container.canvas.unbind_all("<MouseWheel>")
+
     # ── Menu item ──────────────────────────────────────────────────────────
     def add_menu_item(self, text, icon, cmd):
         idx = len(self._menu_parts)
@@ -581,6 +597,7 @@ class DashboardBase:
     def page_profile(self):
         self.header_icon.config(text="👤")
         self.header_title.config(text="Hồ sơ cá nhân")
+        self.set_scrollable(True)
         for w in self.content_area.winfo_children(): w.destroy()
 
         card = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=30, pady=24)
@@ -633,6 +650,11 @@ class DashboardBase:
                 from tkinter import messagebox
                 messagebox.showerror("Lỗi", "Mật khẩu xác nhận không khớp!")
                 return
+            # FEAT-07: Validate password strength
+            if len(new_pw) < 4:
+                from tkinter import messagebox
+                messagebox.showwarning("Mật khẩu yếu", "Mật khẩu mới phải có ít nhất 4 ký tự!")
+                return
             
             ok, msg = self.db.change_password(self.user_data[0], old_pw, new_pw)
             from tkinter import messagebox
@@ -646,27 +668,34 @@ class DashboardBase:
                    command=do_change).grid(row=3, column=1, pady=16, sticky='w')
 
 # --- FINAL COMPONENTS ---
-class StatCard:
-    def __init__(self, parent, title, value, icon, color):
-        self.color = color
-        outer = tk.Frame(parent, bg=StyleConfig.BORDER, padx=1, pady=1)
-        outer.pack(side='left', padx=10, fill='both', expand=True)
-        self.frame = tk.Frame(outer, bg=StyleConfig.CARD_BG, padx=20, pady=20)
-        self.frame.pack(fill='both', expand=True)
-        canvas = tk.Canvas(self.frame, width=54, height=54, bg=StyleConfig.CARD_BG, highlightthickness=0)
-        canvas.pack(side='left', padx=(0, 15))
-        canvas.create_oval(2, 2, 52, 52, fill=color, outline='')
-        canvas.create_text(27, 27, text=icon, font=('Segoe UI', 20), fill='white')
-        right = tk.Frame(self.frame, bg=StyleConfig.CARD_BG)
-        right.pack(side='left', fill='both', expand=True)
-        tk.Label(right, text=title, font=StyleConfig.FONT_SM, bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY).pack(anchor='w')
-        self.val_lbl = tk.Label(right, text=str(value), font=('Segoe UI', 20, 'bold'), bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK)
-        self.val_lbl.pack(anchor='w', pady=(2, 0))
-    def update(self, new_val):
-        self.val_lbl.config(text=str(new_val))
-
-def add_treeview_style(tree):
-    pass
-
-def insert_tree_row(tree, values, tags=()):
-    return tree.insert('', 'end', values=values, tags=tags)
+def add_search_bar(parent, tree, on_refresh_callback):
+    """Thanh tìm kiếm phản hồi tức thì, tự động nạp lại dữ liệu trước khi lọc."""
+    import tkinter as tk
+    from tkinter import ttk
+    
+    frame = tk.Frame(parent, bg=StyleConfig.CARD_BG, padx=24, pady=10)
+    frame.pack(fill='x')
+    
+    tk.Label(frame, text="🔍 Tìm kiếm nhanh:", font=StyleConfig.FONT_SM, 
+             fg=StyleConfig.PRIMARY, bg=StyleConfig.CARD_BG).pack(side='left', padx=(0, 10))
+    
+    search_var = tk.StringVar()
+    ent = ttk.Entry(frame, textvariable=search_var, width=40)
+    ent.pack(side='left', padx=5)
+    
+    def on_type(*args):
+        val = search_var.get().lower().strip()
+        # Bước 1: Gọi callback để nạp lại đầy đủ dữ liệu vào Treeview
+        on_refresh_callback()
+        
+        # Bước 2: Nếu có từ khóa, tiến hành xóa những dòng không khớp
+        if val:
+            for item in tree.get_children():
+                vals = [str(v).lower() for v in tree.item(item)['values']]
+                if not any(val in v for v in vals):
+                    tree.delete(item)
+                
+    search_var.trace_add("write", on_type)
+    
+    ttk.Button(frame, text="Làm mới bảng", command=lambda: (search_var.set(''), on_refresh_callback())).pack(side='left', padx=10)
+    return search_var

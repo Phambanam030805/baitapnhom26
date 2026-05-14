@@ -1,7 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from gui_styles import StyleConfig, DashboardBase, StatCard, add_treeview_style, insert_tree_row, ScrollableFrame
+from gui_styles import StyleConfig, DashboardBase, StatCard, add_treeview_style, insert_tree_row, ScrollableFrame, add_search_bar
 import excel_export
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.family'] = 'Segoe UI'
 
 
 class TeacherDashboard(DashboardBase):
@@ -20,13 +25,14 @@ class TeacherDashboard(DashboardBase):
     def page_grade(self):
         self.header_icon.config(text="📝")
         self.header_title.config(text="Nhập điểm sinh viên")
+        self.set_scrollable(False)
         for w in self.content_area.winfo_children(): w.destroy()
 
         # ── Top: class selector ────────────────────────────────────────────
         top = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=20, pady=14)
         top.pack(fill='x', pady=(0, 16))
 
-        tk.Label(top, text="Chon lop hoc phan:",
+        tk.Label(top, text="Chọn lớp học phần:",
                  font=StyleConfig.FONT_BOLD, fg=StyleConfig.TEXT_GRAY,
                  bg=StyleConfig.CARD_BG).pack(side='left', padx=(0, 10))
 
@@ -39,28 +45,17 @@ class TeacherDashboard(DashboardBase):
                                    bg=StyleConfig.CARD_BG)
         self.lhp_status.pack(side='left')
 
-        # Search box on the right
-        tk.Label(top, text="Tim SV:", font=StyleConfig.FONT_SM,
-                 fg=StyleConfig.TEXT_GRAY, bg=StyleConfig.CARD_BG).pack(side='right', padx=(8,4))
-        ent_sv_search = ttk.Entry(top, width=20)
-        ent_sv_search.pack(side='right')
-
-        # ── Middle: student table ──────────────────────────────────────────
-        mid = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG,
-                       padx=20, pady=16)
+        # ── Middle: student list ───────────────────────────────────────────
+        mid = tk.Frame(self.content_area, bg=StyleConfig.CARD_BG, padx=20, pady=16)
         mid.pack(fill='both', expand=True)
-        tk.Label(mid, text="Danh sách sinh viên & điểm",
-                 font=StyleConfig.FONT_BOLD, fg=StyleConfig.TEXT_GRAY,
-                 bg=StyleConfig.CARD_BG).pack(anchor='w', pady=(0, 10))
 
-        cols = ("ID", "MSV", "Họ tên", "CC", "GK", "CK", "TB", "Xếp loại", "Trạng thái thi")
-        tree = ttk.Treeview(mid, columns=cols, show='headings', selectmode='browse')
+        cols = ("ID", "Mã SV", "Họ tên", "Chuyên cần", "Giữa kỳ", "Cuối kỳ", "Trung bình", "Xếp loại", "Trạng thái")
+        tree = ttk.Treeview(mid, columns=cols, show='headings')
         add_treeview_style(tree)
-        widths = [45, 90, 220, 50, 50, 50, 60, 90, 110]
-        for col, w in zip(cols, widths):
+        for col in cols:
             tree.heading(col, text=col)
-            tree.column(col, width=w, minwidth=w,
-                        anchor='center' if col not in ["Họ tên", "Trạng thái thi"] else 'w')
+            w = 80 if col not in ["Họ tên", "Trạng thái"] else 150
+            tree.column(col, width=w, anchor='center' if col != "Họ tên" else 'w')
 
         sb = ttk.Scrollbar(mid, orient='vertical', command=tree.yview)
         tree.configure(yscrollcommand=sb.set)
@@ -97,7 +92,9 @@ class TeacherDashboard(DashboardBase):
             vals = tree.item(sel[0])['values']
             for i, e in enumerate(ents):
                 e.delete(0, tk.END)
-                e.insert(0, vals[3 + i] if vals[3 + i] else "")
+                # Handle "-" placeholder
+                val = str(vals[3 + i])
+                e.insert(0, val if val != "-" else "")
 
         tree.bind("<<TreeviewSelect>>", on_select)
 
@@ -173,7 +170,7 @@ class TeacherDashboard(DashboardBase):
         # Export button
         def do_export():
             if not cb.get():
-                messagebox.showwarning('Chua chon lop', 'Vui long chon lop hoc phan truoc!'); return
+                messagebox.showwarning('Chưa chọn lớp', 'Vui lòng chọn lớp học phần trước!'); return
             lhp_id = self.lhp_map[cb.get()]
             # Get full class info
             self.db.cursor.execute(
@@ -198,8 +195,6 @@ class TeacherDashboard(DashboardBase):
                    style="Success.TButton", command=do_export).grid(row=1, column=12, padx=(10, 0))
 
         # ── Wire up combobox ───────────────────────────────────────────────
-        self._lhp_data_cache = []
-
         def load_sv(evt):
             for i in tree.get_children(): tree.delete(i)
             if not cb.get(): return
@@ -208,7 +203,6 @@ class TeacherDashboard(DashboardBase):
             # Fetch raw data with trang_thai
             raw_data = self.db.get_bang_diem_lop(lhp_id)
             
-            self._lhp_data_cache = []
             for r in raw_data:
                 # r = (id, ma_sv, ho_ten, cc, gk, ck, tb, chu, trang_thai)
                 formatted = list(r)
@@ -235,33 +229,24 @@ class TeacherDashboard(DashboardBase):
                     if formatted[7] is None:
                         formatted[7] = "-"
                 
-                self._lhp_data_cache.append(tuple(formatted))
+                insert_tree_row(tree, formatted)
                 
-            _apply_sv_filter()
             # Status badge
             self.db.cursor.execute("SELECT status FROM lop_hoc_phan WHERE id=%s", (lhp_id,))
             row = self.db.cursor.fetchone()
             if row:
                 if row[0] == 'open':
-                    self.lhp_status.config(text="Dang mo", fg=StyleConfig.SUCCESS)
+                    self.lhp_status.config(text="Đang mở", fg=StyleConfig.SUCCESS)
                     btn_save.state(['!disabled'])
                     btn_lock.state(['!disabled'])
                 else:
-                    self.lhp_status.config(text="Da khoa", fg=StyleConfig.DANGER)
+                    self.lhp_status.config(text="Đã khóa", fg=StyleConfig.DANGER)
                     btn_save.state(['disabled'])
                     btn_lock.state(['disabled'])
-            self.set_status(f"Lop co {len(self._lhp_data_cache)} sinh vien")
+            self.set_status(f"Lớp có {len(raw_data)} sinh viên")
 
-        def _apply_sv_filter():
-            for i in tree.get_children(): tree.delete(i)
-            kw = ent_sv_search.get().strip().lower()
-            filtered = [r for r in self._lhp_data_cache
-                        if not kw or kw in str(r[1]).lower() or kw in str(r[2]).lower()]
-            for r in filtered: 
-                # Insert all 9 columns
-                insert_tree_row(tree, r)
-
-        ent_sv_search.bind("<KeyRelease>", lambda e: _apply_sv_filter())
+        # Search badge
+        add_search_bar(top, tree, lambda: load_sv(None))
 
         lhps = self.db.get_lhp_by_giang_vien(self.gv_id)
         self.lhp_map = {f"{r[1]}  -  {r[2]}  ({r[3]})": r[0] for r in lhps}
@@ -276,6 +261,7 @@ class TeacherDashboard(DashboardBase):
     def page_stats(self):
         self.header_icon.config(text="📊")
         self.header_title.config(text="Thống kê giảng dạy")
+        self.set_scrollable(False)
         for w in self.content_area.winfo_children(): w.destroy()
 
         data = self.db.get_teacher_stats(self.gv_id)
@@ -312,6 +298,13 @@ class TeacherDashboard(DashboardBase):
             tree.column(col, width=120, minwidth=100, anchor='center')
         tree.column("Tên môn", width=220, anchor='w')
 
+        def refresh_stats():
+            for i in tree.get_children(): tree.delete(i)
+            for r in self.db.get_teacher_stats(self.gv_id):
+                insert_tree_row(tree, r)
+
+        add_search_bar(left, tree, refresh_stats)
+
         sb = ttk.Scrollbar(left, orient='vertical', command=tree.yview)
         tree.configure(yscrollcommand=sb.set)
         sb.pack(side='right', fill='y')
@@ -320,66 +313,59 @@ class TeacherDashboard(DashboardBase):
         for r in data:
             insert_tree_row(tree, r)
 
-        # Right column for specific alerts
-        right = tk.Frame(main_frame, bg=StyleConfig.CONTENT_BG, width=300)
+        # Right column for Chart
+        right = tk.Frame(main_frame, bg=StyleConfig.CARD_BG, width=350, padx=20, pady=20)
         right.pack(side='right', fill='both')
 
-        # Grade Distribution Card
-        dist_card = tk.Frame(right, bg=StyleConfig.CARD_BG, padx=16, pady=14)
-        dist_card.pack(fill='x', pady=(0, 10))
-        tk.Label(dist_card, text="Phổ điểm (Toàn bộ)", font=StyleConfig.FONT_BOLD, 
-                 bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(anchor='w')
-        
-        # Simple text-based bar chart
-        all_diem = []
-        for r in self.db.get_lhp_by_giang_vien(self.gv_id):
-            dist = self.db.get_thong_ke_lop(r[0])
-            all_diem.append(dist)
-        
-        totals = {'A':0, 'B':0, 'C':0, 'D':0, 'F':0}
-        for d in all_diem:
-            for k, v in d.items(): 
-                if k in totals: totals[k] += v
-        
-        max_v = max(totals.values()) if any(totals.values()) else 1
-        for char, count in totals.items():
-            row = tk.Frame(dist_card, bg=StyleConfig.CARD_BG, pady=2)
-            row.pack(fill='x')
-            tk.Label(row, text=f"{char}: {count}", font=StyleConfig.FONT_SM, width=5, 
-                     bg=StyleConfig.CARD_BG, anchor='w').pack(side='left')
-            bar_w = int((count/max_v) * 150)
-            if bar_w < 1: bar_w = 1
-            tk.Frame(row, bg=StyleConfig.INFO, width=bar_w, height=12).pack(side='left', padx=5)
+        tk.Label(right, text="Tỷ lệ Đạt/Trượt tổng quát", font=StyleConfig.FONT_BOLD, 
+                 bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_DARK).pack(pady=(0, 20))
 
-        # Cấm thi Alerts
-        alert_card = tk.Frame(right, bg=StyleConfig.CARD_BG, padx=16, pady=14)
-        alert_card.pack(fill='both', expand=True)
-        tk.Label(alert_card, text="⚠️ Sinh viên bị cấm thi", font=StyleConfig.FONT_BOLD, 
+        fig = Figure(figsize=(4, 4), dpi=100)
+        fig.patch.set_facecolor(StyleConfig.CARD_BG)
+        ax = fig.add_subplot(111)
+
+        tong_dat = sum(r[3] for r in data)
+        tong_rot = sum(r[4] for r in data)
+
+        if tong_dat + tong_rot > 0:
+            labels = ['Đạt', 'Trượt']
+            sizes = [tong_dat, tong_rot]
+            colors = ['#10b981', '#ef4444'] # Green, Red
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, colors=colors,
+                   textprops={'color': StyleConfig.TEXT_DARK, 'weight': 'bold'})
+            ax.axis('equal')
+        else:
+            ax.text(0.5, 0.5, 'Chưa có dữ liệu', ha='center', va='center')
+            ax.axis('off')
+
+        canvas = FigureCanvasTkAgg(fig, master=right)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+
+        # Alerts at the bottom of right column
+        alert_frame = tk.Frame(right, bg=StyleConfig.CARD_BG, pady=20)
+        alert_frame.pack(fill='x')
+        tk.Label(alert_frame, text="⚠️ Cảnh báo sinh viên yếu", font=StyleConfig.FONT_SM, 
                  bg=StyleConfig.CARD_BG, fg=StyleConfig.DANGER).pack(anchor='w')
-        
-        alert_scroll = tk.Frame(alert_card, bg=StyleConfig.CARD_BG)
-        alert_scroll.pack(fill='both', expand=True, pady=10)
         
         cam_thi_all = []
         for r in self.db.get_lhp_by_giang_vien(self.gv_id):
             list_ct = self.db.get_ds_cam_thi(r[0])
-            for ct in list_ct: cam_thi_all.append((ct[0], ct[1], r[1])) # MSV, HoTen, MaLHP
+            for ct in list_ct: cam_thi_all.append(f"{ct[1]} ({r[1]})")
         
-        if not cam_thi_all:
-            tk.Label(alert_scroll, text="Không có sinh viên nào", font=StyleConfig.FONT_XS, 
-                     bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_LIGHT).pack()
+        if cam_thi_all:
+            for ct in cam_thi_all[:5]:
+                tk.Label(alert_frame, text=f"• {ct}", font=StyleConfig.FONT_XS, 
+                         bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY).pack(anchor='w')
         else:
-            for ct in cam_thi_all[:8]: # Show top 8
-                tk.Label(alert_scroll, text=f"• {ct[1]} ({ct[2]})", font=StyleConfig.FONT_XS, 
-                         bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_GRAY, anchor='w').pack(fill='x')
-            if len(cam_thi_all) > 8:
-                tk.Label(alert_scroll, text=f"... và {len(cam_thi_all)-8} SV khác", font=StyleConfig.FONT_XS, 
-                         bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_LIGHT).pack()
+            tk.Label(alert_frame, text="Không có cảnh báo", font=StyleConfig.FONT_XS, 
+                     bg=StyleConfig.CARD_BG, fg=StyleConfig.TEXT_LIGHT).pack(anchor='w')
 
     # ── Notice page ────────────────────────────────────────────────────────
     def page_notice(self):
         self.header_icon.config(text="📢")
         self.header_title.config(text="Thông báo")
+        self.set_scrollable(True)
         for w in self.content_area.winfo_children(): w.destroy()
 
         notices = self.db.get_all_thong_bao()
@@ -410,6 +396,7 @@ class TeacherDashboard(DashboardBase):
     def page_attendance(self):
         self.header_icon.config(text="📅")
         self.header_title.config(text="Hệ thống Điểm danh Thông minh")
+        self.set_scrollable(False)
         for w in self.content_area.winfo_children(): w.destroy()
 
         # Dashboard Container
@@ -528,8 +515,13 @@ class TeacherDashboard(DashboardBase):
             
             # Update Dashboard Stats
             self._st_buoi.update(len(dates))
-            b_count = sum(1 for r in report if (r[3]/r[5] > 0.15))
+            b_count = sum(1 for r in report if r[5] > 0 and (r[3]/r[5] > 0.15))
             self._st_cam.update(b_count)
+            # Tính tỉ lệ chuyên cần tổng
+            total_nghi_k = sum(r[3] for r in report)
+            total_buoi = sum(r[5] for r in report) if report else 1
+            ti_le_cc = max(0, 100 - (total_nghi_k / total_buoi * 100)) if total_buoi > 0 else 100
+            self._st_ti_le.update(f"{ti_le_cc:.0f}%")
             self.set_status(f"Tải xong danh sách: {len(report)} sinh viên", ok=True)
             
             self._att_vars = {}
@@ -537,9 +529,6 @@ class TeacherDashboard(DashboardBase):
                 tk.Label(sheet, text="Chưa có sinh viên nào đăng ký lớp này", bg=StyleConfig.CARD_BG).pack(pady=20)
                 return
 
-            # Header Row
-            h_row = tk.Frame(sheet, bg=StyleConfig.PRIMARY, pady=12)
-            h_row.pack(fill='x')
             for i, r in enumerate(report):
                 id_sv, msv, ho_ten, nghi_k, nghi_p, tong_buoi = r
                 bg = StyleConfig.CARD_BG if i % 2 == 0 else "#fbfcfd"
@@ -573,8 +562,15 @@ class TeacherDashboard(DashboardBase):
         def do_save():
             if not cb_lhp.get(): return
             lhp_id = self.lhp_map[cb_lhp.get()]
+            d_str = ent_date.get().strip()
+            
+            # Validation định dạng YYYY-MM-DD
+            import re
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", d_str):
+                messagebox.showerror("Sai định dạng", "Ngày phải có định dạng YYYY-MM-DD\nVí dụ: 2024-05-12"); return
+
             att_list = [(id_sv, var.get()) for id_sv, var in self._att_vars.items()]
-            ok, msg = self.db.save_attendance(lhp_id, att_list, ent_date.get())
+            ok, msg = self.db.save_attendance(lhp_id, att_list, d_str)
             if ok:
                 self.set_status(msg, ok=True)
                 load_all_data()

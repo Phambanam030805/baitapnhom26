@@ -181,9 +181,14 @@ def export_bang_diem_ca_nhan(sv_info, rows, hk_filter='Tat ca'):
 
     _footer(ws, sr + 2, ncols)
 
-    wb.save(path)
-    messagebox.showinfo('Thanh cong', f'Da xuat file:\n{path}')
-    _open_file(path)
+    try:
+        wb.save(path)
+        messagebox.showinfo('Thành công', f'Đã xuất file:\n{path}')
+        _open_file(path)
+    except PermissionError:
+        messagebox.showerror('Lỗi', f'Không thể lưu file. Vui lòng đóng file "{os.path.basename(path)}" nếu nó đang mở và thử lại.')
+    except Exception as e:
+        messagebox.showerror('Lỗi', f'Đã xảy ra lỗi khi lưu file:\n{str(e)}')
 
 
 # ── 2. Bang diem lop hoc phan (Giang vien) ────────────────────────────────────
@@ -249,9 +254,14 @@ def export_bang_diem_lop(lop_info, rows):
         _set_col_width(ws, i, w)
 
     _footer(ws, sr + 2, ncols)
-    wb.save(path)
-    messagebox.showinfo('Thanh cong', f'Da xuat file:\n{path}')
-    _open_file(path)
+    try:
+        wb.save(path)
+        messagebox.showinfo('Thành công', f'Đã xuất file:\n{path}')
+        _open_file(path)
+    except PermissionError:
+        messagebox.showerror('Lỗi', f'Không thể lưu file. Vui lòng đóng file "{os.path.basename(path)}" nếu nó đang mở và thử lại.')
+    except Exception as e:
+        messagebox.showerror('Lỗi', f'Đã xảy ra lỗi khi lưu file:\n{str(e)}')
 
 
 # ── 3. Danh sach sinh vien (Admin) ────────────────────────────────────────────
@@ -277,7 +287,7 @@ def export_danh_sach_sv(rows):
 
     for idx, r in enumerate(rows):
         dr = 5 + idx
-        _, ma_sv, ho_ten, ns, gt, lop = r
+        _, ma_sv, ho_ten, ns, gt, lop = r[:6]
         _write_data_row(ws, [idx+1, ma_sv, ho_ten, ns or '-', gt or '-', lop or '-'], dr, alt=(idx%2==1))
 
     widths = [5, 14, 30, 14, 10, 20]
@@ -285,9 +295,14 @@ def export_danh_sach_sv(rows):
         _set_col_width(ws, i, w)
 
     _footer(ws, 6 + len(rows), ncols)
-    wb.save(path)
-    messagebox.showinfo('Thanh cong', f'Da xuat file:\n{path}')
-    _open_file(path)
+    try:
+        wb.save(path)
+        messagebox.showinfo('Thành công', f'Đã xuất file:\n{path}')
+        _open_file(path)
+    except PermissionError:
+        messagebox.showerror('Lỗi', f'Không thể lưu file. Vui lòng đóng file "{os.path.basename(path)}" nếu nó đang mở và thử lại.')
+    except Exception as e:
+        messagebox.showerror('Lỗi', f'Đã xảy ra lỗi khi lưu file:\n{str(e)}')
 
 
 # ── 4. Danh sach giang vien (Admin) ───────────────────────────────────────────
@@ -321,6 +336,11 @@ def export_danh_sach_gv(rows):
         _set_col_width(ws, i, w)
 
     _footer(ws, 6 + len(rows), ncols)
-    wb.save(path)
-    messagebox.showinfo('Thanh cong', f'Da xuat file:\n{path}')
-    _open_file(path)
+    try:
+        wb.save(path)
+        messagebox.showinfo('Thành công', f'Đã xuất file:\n{path}')
+        _open_file(path)
+    except PermissionError:
+        messagebox.showerror('Lỗi', f'Không thể lưu file. Vui lòng đóng file "{os.path.basename(path)}" nếu nó đang mở và thử lại.')
+    except Exception as e:
+        messagebox.showerror('Lỗi', f'Đã xảy ra lỗi khi lưu file:\n{str(e)}')
